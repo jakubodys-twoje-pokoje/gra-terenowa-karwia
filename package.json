@@ -1,0 +1,39 @@
+{
+  "name": "gra-terenowa-karwia",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "db:push": "prisma db push",
+    "db:seed": "npx ts-node --project tsconfig.json --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
+    "prisma:studio": "prisma studio",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "next": "14.2.3",
+    "react": "^18",
+    "react-dom": "^18",
+    "@prisma/client": "^5.13.0",
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^4.2.1",
+    "html5-qrcode": "^2.3.8",
+    "lucide-react": "^0.379.0",
+    "clsx": "^2.1.1",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/leaflet": "^1.9.12",
+    "@types/uuid": "^9.0.8",
+    "tailwindcss": "^3.4.1",
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "prisma": "^5.13.0",
+    "ts-node": "^10.9.2"
+  }
+}

@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Building {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  address     String?
+  lat         Float
+  lng         Float
+  imageUrl    String?
+  qrUrl       String   @unique
+  category    String   @default("landmark")
+  discoveries UserDiscovery[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model UserDiscovery {
+  id           Int      @id @default(autoincrement())
+  userId       String
+  buildingId   Int
+  building     Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  discoveredAt DateTime @default(now())
+
+  @@unique([userId, buildingId])
+  @@index([userId])
+}
