@@ -13,6 +13,7 @@ out/
 # Prisma
 prisma/dev.db
 prisma/dev.db-journal
+prisma/prisma/
 
 # Misc
 .DS_Store
