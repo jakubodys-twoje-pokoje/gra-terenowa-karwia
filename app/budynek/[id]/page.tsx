@@ -112,13 +112,18 @@ export default function BudynekPage() {
       const hasAchievements = justUnlocked.length > 0;
       if (hasAchievements) setNewAchievements(justUnlocked.map((a) => a.name));
 
-      // Sequential toasts: discovery first (3s), then achievement (4s after)
+      // Sequential toasts: discovery first (3s), then achievement popup (4s after)
       setTimeout(() => {
         setShowToast(false);
         if (hasAchievements) {
-          setTimeout(() => {
+          setTimeout(async () => {
             setShowAchievementToast(true);
-            setTimeout(() => setShowAchievementToast(false), 4000);
+            // Confetti burst
+            const confetti = (await import('canvas-confetti')).default;
+            confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 }, colors: ['#F5A623', '#0F5F92', '#ffffff', '#FFD700'] });
+            setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 60, colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 300);
+            setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 120, colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 450);
+            setTimeout(() => setShowAchievementToast(false), 5000);
           }, 300);
         }
       }, 3000);
@@ -302,13 +307,28 @@ export default function BudynekPage() {
         </div>
       )}
 
-      {/* Toast – new achievements (sequential, appears after discovery toast) */}
+      {/* Achievement popup – big celebratory card, no overlay */}
       {showAchievementToast && (
-        <div className="fixed top-16 inset-x-4 z-50 bg-sand-500 text-white px-5 py-4 rounded-3xl shadow-xl flex items-center gap-3 animate-in slide-in-from-top-4">
-          <span className="text-2xl">🏆</span>
-          <div>
-            <p className="font-bold text-sm">Nowa odznaka!</p>
-            <p className="text-sand-100 text-xs">{newAchievements.join(', ')}</p>
+        <div className="fixed inset-x-6 top-1/2 -translate-y-1/2 z-50 animate-in zoom-in-90 slide-in-from-bottom-8 duration-300">
+          <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden">
+            {/* Gold header band */}
+            <div className="bg-gradient-to-r from-amber-400 to-yellow-300 px-6 pt-7 pb-5 text-center">
+              <div className="text-7xl leading-none mb-2">🏆</div>
+              <p className="text-amber-900 font-extrabold text-xs uppercase tracking-widest">Nowa odznaka odblokowana!</p>
+            </div>
+            {/* Content */}
+            <div className="px-6 py-5 text-center">
+              <p className="text-ocean-900 font-extrabold text-xl leading-tight">
+                {newAchievements.join(' & ')}
+              </p>
+              <p className="text-gray-400 text-sm mt-2">Świetna robota! Kontynuuj eksplorację Karwi.</p>
+              <button
+                onClick={() => setShowAchievementToast(false)}
+                className="mt-5 w-full bg-ocean-500 text-white py-3 rounded-2xl font-bold text-sm hover:bg-ocean-600 transition"
+              >
+                Hurra! 🎉
+              </button>
+            </div>
           </div>
         </div>
       )}
