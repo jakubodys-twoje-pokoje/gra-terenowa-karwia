@@ -45,13 +45,13 @@ export default function HomePage() {
       </div>
 
       {/* Main options */}
-      <div className="flex-1 px-4 pt-4 pb-6 space-y-4">
+      <div className="flex-1 px-4 pt-4 pb-6 space-y-3">
         <p className="text-center text-ocean-600 font-semibold text-xs uppercase tracking-widest mb-2">
           Co chcesz zrobić?
         </p>
 
         <Link href="/odkrycia">
-          <div className="group bg-white rounded-3xl p-5 shadow-card hover:shadow-card-hover transition-all duration-200 flex items-center gap-4 hover:-translate-y-0.5">
+          <div className="group bg-white rounded-3xl p-5 shadow-card hover:shadow-card-hover transition-all duration-200 flex items-center gap-4 active:scale-[0.98]">
             <div className="w-14 h-14 rounded-2xl bg-ocean-50 flex items-center justify-center group-hover:bg-ocean-100 transition-colors">
               <Compass size={30} className="text-ocean-500" strokeWidth={1.8} />
             </div>
@@ -66,7 +66,7 @@ export default function HomePage() {
         </Link>
 
         <Link href="/osiagniecia">
-          <div className="group bg-white rounded-3xl p-5 shadow-card hover:shadow-card-hover transition-all duration-200 flex items-center gap-4 hover:-translate-y-0.5">
+          <div className="group bg-white rounded-3xl p-5 shadow-card hover:shadow-card-hover transition-all duration-200 flex items-center gap-4 active:scale-[0.98]">
             <div className="w-14 h-14 rounded-2xl bg-sand-50 flex items-center justify-center group-hover:bg-sand-100 transition-colors">
               <Trophy size={30} className="text-sand-500" strokeWidth={1.8} />
             </div>
@@ -81,7 +81,7 @@ export default function HomePage() {
         </Link>
 
         <Link href="/baza">
-          <div className="group bg-white rounded-3xl p-5 shadow-card hover:shadow-card-hover transition-all duration-200 flex items-center gap-4 hover:-translate-y-0.5">
+          <div className="group bg-white rounded-3xl p-5 shadow-card hover:shadow-card-hover transition-all duration-200 flex items-center gap-4 active:scale-[0.98]">
             <div className="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center group-hover:bg-cyan-100 transition-colors">
               <BookOpen size={30} className="text-cyan-600" strokeWidth={1.8} />
             </div>
@@ -98,7 +98,7 @@ export default function HomePage() {
         {/* Scan CTA */}
         <div className="pt-2">
           <Link href="/skanuj">
-            <button className="w-full py-4 rounded-3xl bg-gradient-to-r from-ocean-500 to-ocean-400 text-white font-bold text-base shadow-lg shadow-ocean-500/30 hover:shadow-ocean-500/50 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-3">
+            <button className="w-full py-4 rounded-3xl bg-gradient-to-r from-ocean-500 to-ocean-400 text-white font-bold text-base shadow-lg shadow-ocean-500/30 hover:shadow-ocean-500/50 transition-all active:scale-[0.98] flex items-center justify-center gap-3">
               <span className="text-xl">📷</span>
               Skanuj kod QR
             </button>
