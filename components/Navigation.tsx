@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Map, Trophy, Compass, BookOpen, QrCode } from 'lucide-react';
+import { Settings, Trophy, Compass, BookOpen, QrCode } from 'lucide-react';
 import clsx from 'clsx';
 
 const navItems = [
@@ -10,7 +10,7 @@ const navItems = [
   { href: '/baza', label: 'Baza', Icon: BookOpen },
   { href: '/skanuj', label: 'Skanuj', Icon: QrCode, primary: true },
   { href: '/osiagniecia', label: 'Odznaki', Icon: Trophy },
-  { href: '/', label: 'Mapa', Icon: Map },
+  { href: '/', label: 'Menu', Icon: Settings },
 ];
 
 export default function Navigation() {
