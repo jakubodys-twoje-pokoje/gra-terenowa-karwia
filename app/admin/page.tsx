@@ -2,10 +2,16 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Plus, Trash2, Edit3, Lock, Check, X } from 'lucide-react';
+import { Plus, Trash2, Edit3, Lock, Check, X, Images } from 'lucide-react';
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
+
+interface BuildingImage {
+  id: number;
+  url: string;
+  order: number;
+}
 
 interface Building {
   id: number;
@@ -17,6 +23,7 @@ interface Building {
   imageUrl?: string;
   qrUrl: string;
   category: string;
+  images: BuildingImage[];
 }
 
 const CATEGORIES = [
@@ -41,6 +48,7 @@ export default function AdminPage() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [gallery, setGallery] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
@@ -59,8 +67,6 @@ export default function AdminPage() {
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    // We verify by trying to fetch – if it fails, wrong password
-    // But for admin list, GET doesn't need auth. We just store locally.
     setAuthed(true);
     loadBuildings(password);
   };
@@ -80,6 +86,7 @@ export default function AdminPage() {
       ...form,
       lat: parseFloat(form.lat),
       lng: parseFloat(form.lng),
+      gallery: gallery.filter((u) => u.trim()),
     };
 
     const url = editingId ? `/api/budynki/${editingId}` : '/api/budynki';
@@ -94,6 +101,7 @@ export default function AdminPage() {
     if (res.ok) {
       setSuccess(editingId ? 'Budynek zaktualizowany!' : 'Budynek dodany!');
       setForm(EMPTY_FORM);
+      setGallery([]);
       setEditingId(null);
       setShowForm(false);
       setTimeout(() => setSuccess(''), 3000);
@@ -110,6 +118,7 @@ export default function AdminPage() {
       lat: String(b.lat), lng: String(b.lng),
       imageUrl: b.imageUrl ?? '', qrUrl: b.qrUrl, category: b.category,
     });
+    setGallery(b.images.map((img) => img.url));
     setEditingId(b.id);
     setShowForm(true);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -130,10 +139,17 @@ export default function AdminPage() {
 
   const cancelForm = () => {
     setForm(EMPTY_FORM);
+    setGallery([]);
     setEditingId(null);
     setShowForm(false);
     setFormError('');
   };
+
+  const addGalleryUrl = () => setGallery((g) => [...g, '']);
+  const updateGalleryUrl = (i: number, val: string) =>
+    setGallery((g) => g.map((u, idx) => (idx === i ? val : u)));
+  const removeGalleryUrl = (i: number) =>
+    setGallery((g) => g.filter((_, idx) => idx !== i));
 
   useEffect(() => {
     const stored = sessionStorage.getItem('admin_pass');
@@ -296,11 +312,58 @@ export default function AdminPage() {
             </p>
 
             <input
-              placeholder="URL zdjęcia (opcjonalnie)"
+              placeholder="URL zdjęcia okładkowego (opcjonalnie)"
               value={form.imageUrl}
               onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
               className="w-full border border-gray-200 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400"
             />
+
+            {/* Gallery */}
+            <div className="border border-gray-200 rounded-2xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-ocean-800">
+                  <Images size={15} />
+                  Galeria zdjęć
+                  {gallery.length > 0 && (
+                    <span className="bg-ocean-100 text-ocean-600 text-xs px-1.5 py-0.5 rounded-full">
+                      {gallery.length}
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={addGalleryUrl}
+                  className="flex items-center gap-1 text-xs text-ocean-500 font-semibold hover:text-ocean-700"
+                >
+                  <Plus size={13} />
+                  Dodaj zdjęcie
+                </button>
+              </div>
+
+              {gallery.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-1">
+                  Brak zdjęć w galerii — kliknij &quot;Dodaj zdjęcie&quot;
+                </p>
+              )}
+
+              {gallery.map((url, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    placeholder={`URL zdjęcia ${i + 1}`}
+                    value={url}
+                    onChange={(e) => updateGalleryUrl(i, e.target.value)}
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeGalleryUrl(i)}
+                    className="p-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 shrink-0"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
 
             {formError && <p className="text-red-500 text-sm">{formError}</p>}
 
@@ -337,6 +400,12 @@ export default function AdminPage() {
                   <h3 className="font-bold text-ocean-900 text-sm">{b.name}</h3>
                   <p className="text-gray-400 text-xs mt-0.5 truncate">{b.qrUrl}</p>
                   <p className="text-gray-300 text-xs">{b.lat.toFixed(4)}, {b.lng.toFixed(4)}</p>
+                  {b.images.length > 0 && (
+                    <p className="text-ocean-400 text-xs mt-0.5">
+                      <Images size={10} className="inline mr-0.5" />
+                      {b.images.length} zdjęć w galerii
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-1">
                   <button

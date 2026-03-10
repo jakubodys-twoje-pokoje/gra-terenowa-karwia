@@ -19,6 +19,12 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   nature:     { label: '🌿 Natura',    color: 'bg-green-100 text-green-700' },
 };
 
+interface BuildingImage {
+  id: number;
+  url: string;
+  order: number;
+}
+
 interface Building {
   id: number;
   name: string;
@@ -29,6 +35,7 @@ interface Building {
   imageUrl: string | null;
   category: string;
   qrUrl: string;
+  images: BuildingImage[];
 }
 
 interface NearbyBuilding {
@@ -182,6 +189,27 @@ export default function BudynekPage() {
         <div className="bg-white rounded-3xl p-5 mt-4 shadow-card">
           <p className="text-gray-600 text-sm leading-relaxed">{building.description}</p>
         </div>
+
+        {/* Gallery */}
+        {building.images.length > 0 && (
+          <div className="mt-4">
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+              {building.images.map((img) => (
+                <div
+                  key={img.id}
+                  className="shrink-0 w-64 h-44 rounded-2xl overflow-hidden shadow-card snap-start"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.url}
+                    alt={building.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Map */}
         <div className="mt-4 rounded-3xl overflow-hidden shadow-card">

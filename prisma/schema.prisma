@@ -18,8 +18,17 @@ model Building {
   qrUrl       String   @unique
   category    String   @default("landmark")
   discoveries UserDiscovery[]
+  images      BuildingImage[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model BuildingImage {
+  id         Int      @id @default(autoincrement())
+  buildingId Int
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  url        String
+  order      Int      @default(0)
 }
 
 model UserDiscovery {

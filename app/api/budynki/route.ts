@@ -7,6 +7,7 @@ export async function GET() {
     select: {
       id: true, name: true, description: true, address: true,
       lat: true, lng: true, imageUrl: true, category: true, qrUrl: true,
+      images: { orderBy: { order: 'asc' }, select: { id: true, url: true, order: true } },
     },
   });
   return NextResponse.json(buildings);
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, description, address, lat, lng, imageUrl, qrUrl, category } = body;
+  const { name, description, address, lat, lng, imageUrl, qrUrl, category, gallery } = body;
 
   if (!name || !description || lat == null || lng == null || !qrUrl) {
     return NextResponse.json({ error: 'Brakujące pola' }, { status: 400 });
@@ -27,7 +28,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const building = await prisma.building.create({
-      data: { name, description, address, lat: Number(lat), lng: Number(lng), imageUrl, qrUrl, category: category || 'landmark' },
+      data: {
+        name, description, address, lat: Number(lat), lng: Number(lng),
+        imageUrl, qrUrl, category: category || 'landmark',
+        images: {
+          create: ((gallery as string[] | undefined) ?? [])
+            .filter((url) => url.trim())
+            .map((url, i) => ({ url: url.trim(), order: i })),
+        },
+      },
+      include: { images: { orderBy: { order: 'asc' } } },
     });
     return NextResponse.json(building, { status: 201 });
   } catch {

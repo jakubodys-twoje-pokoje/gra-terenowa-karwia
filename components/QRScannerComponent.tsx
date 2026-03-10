@@ -18,30 +18,40 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
     let active = true;
 
     const startScanner = async () => {
-      const { Html5Qrcode } = await import('html5-qrcode');
-
-      if (!active) return;
-
-      const scanner = new Html5Qrcode(containerId);
-      scannerRef.current = scanner;
-
       try {
-        await scanner.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          (decodedText) => {
-            if (active) {
-              onResult(decodedText);
-              scanner.stop().catch(() => {});
-            }
-          },
-          undefined
-        );
-        if (active) setStarted(true);
+        const { Html5Qrcode } = await import('html5-qrcode');
+
+        if (!active) return;
+
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const scanner = new Html5Qrcode(containerId);
+        scannerRef.current = scanner;
+
+        try {
+          await scanner.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+              if (active) {
+                onResult(decodedText);
+                try { scanner.stop().catch(() => {}); } catch { /* ignore */ }
+              }
+            },
+            undefined
+          );
+          if (active) setStarted(true);
+        } catch (err) {
+          if (active) {
+            setError('Nie można uruchomić kamery. Sprawdź uprawnienia w przeglądarce.');
+            console.error(err);
+          }
+        }
       } catch (err) {
         if (active) {
-          setError('Nie można uruchomić kamery. Sprawdź uprawnienia w przeglądarce.');
-          console.error(err);
+          setError('Nie udało się załadować skanera. Spróbuj odświeżyć stronę.');
+          console.error('html5-qrcode load error:', err);
         }
       }
     };
@@ -51,7 +61,11 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
     return () => {
       active = false;
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
+        try {
+          scannerRef.current.stop().catch(() => {});
+        } catch {
+          // scanner was not running yet
+        }
         scannerRef.current = null;
       }
     };
