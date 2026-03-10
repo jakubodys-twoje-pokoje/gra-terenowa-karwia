@@ -97,9 +97,12 @@ export default function OdkryciaPage() {
           <div className="mb-5 rounded-3xl overflow-hidden shadow-card">
             <MapComponent
               buildings={mapBuildings}
-              center={[54.7505, 17.8670]}
+              center={[
+                mapBuildings.reduce((s, b) => s + b.lat, 0) / mapBuildings.length,
+                mapBuildings.reduce((s, b) => s + b.lng, 0) / mapBuildings.length,
+              ]}
               zoom={14}
-              height="220px"
+              height="60vh"
             />
           </div>
 

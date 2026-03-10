@@ -68,6 +68,7 @@ export default function BudynekPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [showAchievementToast, setShowAchievementToast] = useState(false);
 
   const load = useCallback(async () => {
     const [bRes, nRes] = await Promise.all([
@@ -93,7 +94,6 @@ export default function BudynekPage() {
     if (discRes.ok) {
       setDiscovered(true);
       setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
 
       // Check achievements
       const [allDiscoveries, allBuildings] = await Promise.all([
@@ -109,7 +109,19 @@ export default function BudynekPage() {
       );
       const newUnlocked = getUnlockedAchievements(allDiscoveries.length, allBuildings.length, cats);
       const justUnlocked = newUnlocked.filter((a) => !prevUnlocked.has(a.id));
-      if (justUnlocked.length > 0) setNewAchievements(justUnlocked.map((a) => a.name));
+      const hasAchievements = justUnlocked.length > 0;
+      if (hasAchievements) setNewAchievements(justUnlocked.map((a) => a.name));
+
+      // Sequential toasts: discovery first (3s), then achievement (4s after)
+      setTimeout(() => {
+        setShowToast(false);
+        if (hasAchievements) {
+          setTimeout(() => {
+            setShowAchievementToast(true);
+            setTimeout(() => setShowAchievementToast(false), 4000);
+          }, 300);
+        }
+      }, 3000);
     }
 
     setLoading(false);
@@ -290,9 +302,9 @@ export default function BudynekPage() {
         </div>
       )}
 
-      {/* Toast – new achievements */}
-      {newAchievements.length > 0 && (
-        <div className="fixed top-32 inset-x-4 z-50 bg-sand-500 text-white px-5 py-4 rounded-3xl shadow-xl flex items-center gap-3">
+      {/* Toast – new achievements (sequential, appears after discovery toast) */}
+      {showAchievementToast && (
+        <div className="fixed top-16 inset-x-4 z-50 bg-sand-500 text-white px-5 py-4 rounded-3xl shadow-xl flex items-center gap-3 animate-in slide-in-from-top-4">
           <span className="text-2xl">🏆</span>
           <div>
             <p className="font-bold text-sm">Nowa odznaka!</p>
