@@ -67,6 +67,7 @@ export default function AdminPage() {
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
+    sessionStorage.setItem('admin_pass', password);
     setAuthed(true);
     loadBuildings(password);
   };

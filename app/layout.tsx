@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Navigation from '@/components/Navigation';
+import PortraitGuard from '@/components/PortraitGuard';
 
 export const metadata: Metadata = {
   title: 'Karwia – Gra Terenowa',
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <Navigation />
+        <PortraitGuard />
       </body>
     </html>
   );

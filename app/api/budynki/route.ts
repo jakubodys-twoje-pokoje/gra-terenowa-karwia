@@ -2,15 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
 export async function GET() {
-  const buildings = await prisma.building.findMany({
-    orderBy: { name: 'asc' },
-    select: {
-      id: true, name: true, description: true, address: true,
-      lat: true, lng: true, imageUrl: true, category: true, qrUrl: true,
-      images: { orderBy: { order: 'asc' }, select: { id: true, url: true, order: true } },
-    },
-  });
-  return NextResponse.json(buildings);
+  try {
+    const buildings = await prisma.building.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        id: true, name: true, description: true, address: true,
+        lat: true, lng: true, imageUrl: true, category: true, qrUrl: true,
+        images: { orderBy: { order: 'asc' }, select: { id: true, url: true, order: true } },
+      },
+    });
+    return NextResponse.json(buildings);
+  } catch {
+    // Fallback: BuildingImage table may not exist yet on server (run prisma db push)
+    const buildings = await prisma.building.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        id: true, name: true, description: true, address: true,
+        lat: true, lng: true, imageUrl: true, category: true, qrUrl: true,
+      },
+    });
+    return NextResponse.json(buildings.map((b) => ({ ...b, images: [] })));
+  }
 }
 
 export async function POST(req: NextRequest) {

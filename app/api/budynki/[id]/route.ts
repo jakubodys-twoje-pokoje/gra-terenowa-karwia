@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const building = await prisma.building.findUnique({
-    where: { id: Number(params.id) },
-    include: { images: { orderBy: { order: 'asc' } } },
-  });
-  if (!building) return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
-  return NextResponse.json(building);
+  try {
+    const building = await prisma.building.findUnique({
+      where: { id: Number(params.id) },
+      include: { images: { orderBy: { order: 'asc' } } },
+    });
+    if (!building) return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
+    return NextResponse.json(building);
+  } catch {
+    // Fallback without images
+    const building = await prisma.building.findUnique({
+      where: { id: Number(params.id) },
+    });
+    if (!building) return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
+    return NextResponse.json({ ...building, images: [] });
+  }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {

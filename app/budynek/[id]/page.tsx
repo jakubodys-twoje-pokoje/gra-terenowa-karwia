@@ -66,6 +66,7 @@ export default function BudynekPage() {
   const [discovered, setDiscovered] = useState(false);
   const [newAchievements, setNewAchievements] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
   const load = useCallback(async () => {
@@ -74,7 +75,7 @@ export default function BudynekPage() {
       fetch(`/api/budynki/${id}/najblizsze`),
     ]);
 
-    if (!bRes.ok) { router.push('/'); return; }
+    if (!bRes.ok) { setNotFound(true); setLoading(false); return; }
 
     const b: Building = await bRes.json();
     const n: NearbyBuilding[] = nRes.ok ? await nRes.json() : [];
@@ -120,6 +121,22 @@ export default function BudynekPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-10 h-10 border-4 border-ocean-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center gap-4">
+        <div className="text-6xl">🔍</div>
+        <h2 className="text-xl font-extrabold text-ocean-900">Nie znaleziono miejsca</h2>
+        <p className="text-gray-400 text-sm">Ten kod QR nie jest jeszcze zarejestrowany w grze lub budynek został usunięty.</p>
+        <button
+          onClick={() => router.push('/')}
+          className="bg-ocean-500 text-white px-6 py-3 rounded-2xl font-bold mt-2"
+        >
+          Wróć do mapy
+        </button>
       </div>
     );
   }

@@ -56,7 +56,7 @@ export default async function BazaPage() {
                 description={b.description}
                 imageUrl={b.imageUrl}
                 category={b.category}
-                showLink={false}
+                showLink={true}
               />
             ))}
           </div>
