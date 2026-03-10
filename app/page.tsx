@@ -7,7 +7,7 @@ export default function HomePage() {
     <div className="flex flex-col">
       {/* Hero */}
       <div
-        className="relative h-64 flex flex-col items-center justify-center overflow-hidden"
+        className="relative h-72 flex flex-col items-center justify-center overflow-hidden"
         style={{
           background: 'linear-gradient(160deg, #073655 0%, #0F5F92 50%, #2A8EC9 100%)',
         }}
@@ -25,20 +25,20 @@ export default function HomePage() {
           />
         </svg>
 
-        {/* Decorative circles */}
-        <div className="absolute top-4 right-8 w-32 h-32 rounded-full bg-white/5" />
-        <div className="absolute -top-6 -left-6 w-40 h-40 rounded-full bg-white/5" />
+        {/* Decorative circles — behind content */}
+        <div className="absolute top-4 right-8 w-32 h-32 rounded-full bg-white/5 -z-10" />
+        <div className="absolute -top-6 -left-6 w-40 h-40 rounded-full bg-white/5 -z-10" />
 
-        <div className="relative text-center px-6">
+        <div className="relative z-10 text-center px-6 mb-8">
           <Image
             src="https://karwia.pl/wp-content/uploads/2024/12/Karwia_logo.webp"
             alt="Karwia"
-            width={160}
-            height={80}
+            width={200}
+            height={100}
             className="mx-auto mb-2 drop-shadow-lg"
             unoptimized
           />
-          <p className="text-ocean-100 text-sm mt-1 font-medium">
+          <p className="text-ocean-100 text-sm font-medium">
             Gra Terenowa · Odkryj nadmorskie skarby
           </p>
         </div>
