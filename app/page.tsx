@@ -3,7 +3,7 @@ import { Compass, Trophy, BookOpen } from 'lucide-react';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col">
       {/* Hero */}
       <div
         className="relative h-64 flex flex-col items-center justify-center overflow-hidden"

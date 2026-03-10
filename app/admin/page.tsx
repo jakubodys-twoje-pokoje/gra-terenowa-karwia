@@ -291,6 +291,9 @@ export default function AdminPage() {
               onChange={(e) => setForm((f) => ({ ...f, qrUrl: e.target.value }))}
               className="w-full border border-gray-200 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400"
             />
+            <p className="text-xs text-gray-400 mt-1 px-1">
+              💡 Zeskanuj swój istniejący kod QR telefonem — otworzony adres URL wklej tutaj. Aplikacja będzie go rozpoznawać automatycznie.
+            </p>
 
             <input
               placeholder="URL zdjęcia (opcjonalnie)"
