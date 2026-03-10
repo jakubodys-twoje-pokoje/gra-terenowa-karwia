@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Compass, Trophy, BookOpen } from 'lucide-react';
 
 export default function HomePage() {
@@ -29,10 +30,14 @@ export default function HomePage() {
         <div className="absolute -top-6 -left-6 w-40 h-40 rounded-full bg-white/5" />
 
         <div className="relative text-center px-6">
-          <div className="text-4xl mb-2">⚓</div>
-          <h1 className="text-white text-2xl font-extrabold uppercase tracking-wider">
-            Karwia
-          </h1>
+          <Image
+            src="https://karwia.pl/wp-content/uploads/2024/12/Karwia_logo.webp"
+            alt="Karwia"
+            width={160}
+            height={80}
+            className="mx-auto mb-2 drop-shadow-lg"
+            unoptimized
+          />
           <p className="text-ocean-100 text-sm mt-1 font-medium">
             Gra Terenowa · Odkryj nadmorskie skarby
           </p>
@@ -105,9 +110,14 @@ export default function HomePage() {
 
         {/* Footer */}
         <div className="text-center pt-4">
-          <p className="text-ocean-300 text-xs">
+          <a
+            href="https://www.karwia.pl"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-ocean-400 text-xs hover:text-ocean-500 underline underline-offset-2"
+          >
             🌊 Karwia · morze radości od 750 lat
-          </p>
+          </a>
         </div>
       </div>
     </div>

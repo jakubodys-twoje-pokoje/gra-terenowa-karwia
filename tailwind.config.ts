@@ -15,7 +15,7 @@ const config: Config = {
           200: '#A3D0F2',
           300: '#5AAEE0',
           400: '#2A8EC9',
-          500: '#0F5F92',  // primary
+          500: '#105F92',  // primary — Karwia brand blue
           600: '#0A4A73',
           700: '#073655',
           800: '#042338',
@@ -27,7 +27,7 @@ const config: Config = {
           200: '#FFEDB3',
           300: '#FFD966',
           400: '#F5C400',
-          500: '#F0A500',  // accent gold
+          500: '#F49A1A',  // accent — Karwia brand orange/gold
           600: '#C27D00',
           700: '#8F5800',
           800: '#5C3700',
@@ -36,11 +36,12 @@ const config: Config = {
         sea: {
           light: '#E8F4FD',
           mid:   '#B3D9F4',
-          dark:  '#0F5F92',
+          dark:  '#105F92',
         },
       },
       fontFamily: {
-        sans: ['Montserrat', 'system-ui', 'sans-serif'],
+        sans: ['Nunito', 'system-ui', 'sans-serif'],
+        heading: ['Kanit', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         '2xl': '1rem',
