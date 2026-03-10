@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, MapPin, Navigation, Check } from 'lucide-react';
 import Link from 'next/link';
@@ -60,6 +60,7 @@ function getUserId(): string {
 export default function BudynekPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [building, setBuilding] = useState<Building | null>(null);
   const [nearby, setNearby] = useState<NearbyBuilding[]>([]);
@@ -71,6 +72,13 @@ export default function BudynekPage() {
   const [showAchievementToast, setShowAchievementToast] = useState(false);
 
   const load = useCallback(async () => {
+    const celebratedKey = `karwia_celebrated_${id}`;
+    const alreadyCelebrated = localStorage.getItem(celebratedKey) !== null;
+    const isScan = searchParams.get('scan') === '1';
+
+    // Show discovered badge if already in localStorage
+    if (alreadyCelebrated) setDiscovered(true);
+
     const [bRes, nRes] = await Promise.all([
       fetch(`/api/budynki/${id}`),
       fetch(`/api/budynki/${id}/najblizsze`),
@@ -82,55 +90,57 @@ export default function BudynekPage() {
     const n: NearbyBuilding[] = nRes.ok ? await nRes.json() : [];
     setBuilding(b);
     setNearby(n);
+    setLoading(false);
 
-    // Mark as discovered
+    // Only trigger discovery flow when coming from QR scan
+    if (!isScan) return;
+
+    // Mark on server (idempotent upsert)
     const userId = getUserId();
-    const discRes = await fetch('/api/odkrycia', {
+    await fetch('/api/odkrycia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, buildingId: Number(id) }),
     });
 
-    if (discRes.ok) {
-      setDiscovered(true);
-      setShowToast(true);
+    setDiscovered(true);
 
-      // Check achievements
-      const [allDiscoveries, allBuildings] = await Promise.all([
-        fetch(`/api/odkrycia?userId=${userId}`).then((r) => r.json()),
-        fetch('/api/budynki').then((r) => r.json()),
-      ]);
+    // Don't show toasts again if already celebrated
+    if (alreadyCelebrated) return;
 
-      const { getUnlockedAchievements } = await import('@/lib/achievements');
-      const cats = allDiscoveries.map((d: { building: { category: string } }) => d.building.category);
-      const prevCount = allDiscoveries.length - 1;
-      const prevUnlocked = new Set(
-        getUnlockedAchievements(prevCount, allBuildings.length, cats).map((a) => a.id)
-      );
-      const newUnlocked = getUnlockedAchievements(allDiscoveries.length, allBuildings.length, cats);
-      const justUnlocked = newUnlocked.filter((a) => !prevUnlocked.has(a.id));
-      const hasAchievements = justUnlocked.length > 0;
-      if (hasAchievements) setNewAchievements(justUnlocked.map((a) => a.name));
+    // Mark as celebrated in localStorage immediately
+    localStorage.setItem(celebratedKey, '1');
 
-      // Sequential toasts: discovery first (3s), then achievement popup (4s after)
-      setTimeout(() => {
-        setShowToast(false);
-        if (hasAchievements) {
-          setTimeout(async () => {
-            setShowAchievementToast(true);
-            // Confetti burst
-            const confetti = (await import('canvas-confetti')).default;
-            confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 }, colors: ['#F5A623', '#0F5F92', '#ffffff', '#FFD700'] });
-            setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 60, colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 300);
-            setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 120, colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 450);
-            setTimeout(() => setShowAchievementToast(false), 5000);
-          }, 300);
-        }
-      }, 3000);
-    }
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
 
-    setLoading(false);
-  }, [id, router]);
+    // Check for new achievements
+    const [allDiscoveries, allBuildings] = await Promise.all([
+      fetch(`/api/odkrycia?userId=${userId}`).then((r) => r.json()),
+      fetch('/api/budynki').then((r) => r.json()),
+    ]);
+
+    const { getUnlockedAchievements } = await import('@/lib/achievements');
+    const cats = allDiscoveries.map((d: { building: { category: string } }) => d.building.category);
+    const prevCount = allDiscoveries.length - 1;
+    const prevUnlocked = new Set(
+      getUnlockedAchievements(prevCount, allBuildings.length, cats).map((a) => a.id)
+    );
+    const newUnlocked = getUnlockedAchievements(allDiscoveries.length, allBuildings.length, cats);
+    const justUnlocked = newUnlocked.filter((a) => !prevUnlocked.has(a.id));
+
+    if (justUnlocked.length === 0) return;
+    setNewAchievements(justUnlocked.map((a) => a.name));
+
+    // Show achievement popup after 0.8s with confetti
+    setTimeout(async () => {
+      setShowAchievementToast(true);
+      const confetti = (await import('canvas-confetti')).default;
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 }, colors: ['#F5A623', '#0F5F92', '#ffffff', '#FFD700'] });
+      setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 60, colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 300);
+      setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 120, colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 450);
+    }, 800);
+  }, [id, searchParams]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -251,7 +261,7 @@ export default function BudynekPage() {
             buildings={mapBuildings}
             center={[building.lat, building.lng]}
             zoom={15}
-            height="240px"
+            height="180px"
           />
         </div>
         <p className="text-xs text-gray-400 text-center mt-2">

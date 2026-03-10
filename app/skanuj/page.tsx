@@ -25,7 +25,7 @@ export default function SkanujPage() {
 
         if (res.ok) {
           const { id } = await res.json();
-          router.push(`/budynek/${id}`);
+          router.push(`/budynek/${id}?scan=1`);
           return;
         }
 
@@ -34,7 +34,7 @@ export default function SkanujPage() {
           const parsed = new URL(url);
           const match = parsed.pathname.match(/^\/budynek\/(\d+)$/);
           if (match) {
-            router.push(`/budynek/${match[1]}`);
+            router.push(`/budynek/${match[1]}?scan=1`);
             return;
           }
         } catch {
