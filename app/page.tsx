@@ -1,124 +1,212 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import { Compass, Trophy, BookOpen, User } from 'lucide-react';
+'use client';
 
-export default function HomePage() {
+import { useEffect, useState, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
+import { QrCode, MapPin, ChevronDown, ExternalLink } from 'lucide-react';
+import type { MapBuilding } from '@/components/MapComponent';
+
+const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
+
+interface Building {
+  id: number;
+  name: string;
+  description: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  imageUrl: string | null;
+  outlineImageUrl: string | null;
+  category: string;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  beach: '🏖️ Plaża',
+  landmark: '🏛️ Zabytek',
+  food: '🐟 Jedzenie',
+  hotel: '🏨 Nocleg',
+  attraction: '⭐ Atrakcja',
+  nature: '🌿 Natura',
+};
+
+function getUserId(): string {
+  let id = localStorage.getItem('karwia_user_id');
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('karwia_user_id', id); }
+  return id;
+}
+
+export default function MapPage() {
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [discoveredIds, setDiscoveredIds] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Building | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  const load = useCallback(async () => {
+    const userId = getUserId();
+    const [bRes, dRes] = await Promise.all([
+      fetch('/api/budynki'),
+      fetch(`/api/odkrycia?userId=${userId}`),
+    ]);
+    const allBuildings: Building[] = bRes.ok ? await bRes.json() : [];
+    const discoveries = dRes.ok ? await dRes.json() : [];
+    setBuildings(allBuildings);
+    setDiscoveredIds(new Set(discoveries.map((d: { building: { id: number } }) => d.building.id)));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleBuildingClick = useCallback((id: number) => {
+    const b = buildings.find((x) => x.id === id);
+    if (!b) return;
+    setSelected(b);
+    setSheetOpen(true);
+  }, [buildings]);
+
+  const closeSheet = () => setSheetOpen(false);
+
+  // Close sheet on backdrop tap
+  const handleBackdrop = (e: React.MouseEvent) => {
+    if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
+      closeSheet();
+    }
+  };
+
+  const mapBuildings: MapBuilding[] = buildings.map((b) => ({
+    id: b.id,
+    name: b.name,
+    lat: b.lat,
+    lng: b.lng,
+    discovered: discoveredIds.has(b.id),
+    imageUrl: b.imageUrl,
+    outlineImageUrl: b.outlineImageUrl,
+  }));
+
+  const isDiscovered = selected ? discoveredIds.has(selected.id) : false;
+
   return (
-    <div className="flex flex-col">
-      {/* Hero — max 1/3 ekranu */}
-      <div
-        className="relative h-[30vh] min-h-[180px] flex flex-col items-center justify-center overflow-hidden"
-        style={{
-          background: 'linear-gradient(160deg, #073655 0%, #0F5F92 50%, #2A8EC9 100%)',
-        }}
+    <div className="relative h-full overflow-hidden">
+      {/* Full-screen map */}
+      <MapComponent
+        buildings={mapBuildings}
+        height="100%"
+        zoom={15}
+        showUserLocation
+        onBuildingClick={handleBuildingClick}
+      />
+
+      {/* Floating scan button */}
+      <button
+        onClick={() => router.push('/skanuj')}
+        className="absolute bottom-4 right-4 z-[500] w-14 h-14 bg-ocean-500 text-white rounded-full shadow-lg shadow-ocean-500/40 flex items-center justify-center active:bg-ocean-600 transition-colors"
+        aria-label="Skanuj kod QR"
       >
-        {/* Wave SVG */}
-        <svg
-          className="absolute bottom-0 inset-x-0 w-full"
-          viewBox="0 0 375 60"
-          preserveAspectRatio="none"
-          xmlns="http://www.w3.org/2000/svg"
+        <QrCode size={24} />
+      </button>
+
+      {/* Stats pill */}
+      {buildings.length > 0 && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md flex items-center gap-2">
+          <MapPin size={13} className="text-ocean-500" />
+          <span className="text-xs font-bold text-ocean-900">
+            {discoveredIds.size} / {buildings.length} odkrytych
+          </span>
+        </div>
+      )}
+
+      {/* Bottom sheet backdrop */}
+      {sheetOpen && (
+        <div
+          className="absolute inset-0 z-[600]"
+          onClick={handleBackdrop}
         >
-          <path
-            d="M0 30 Q60 0 120 30 T240 30 T375 30 V60 H0Z"
-            fill="#F0F6FB"
-          />
-        </svg>
-
-        {/* Decorative circles — behind content */}
-        <div className="absolute top-4 right-8 w-32 h-32 rounded-full bg-white/5 -z-10" />
-        <div className="absolute -top-6 -left-6 w-40 h-40 rounded-full bg-white/5 -z-10" />
-
-        <div className="relative z-10 text-center px-6 pb-10">
-          <Image
-            src="https://karwia.pl/wp-content/uploads/2024/12/Karwia_logo.webp"
-            alt="Karwia"
-            width={140}
-            height={70}
-            className="mx-auto drop-shadow-lg"
-            unoptimized
-          />
-          <p className="text-ocean-100 text-sm font-medium mt-4">
-            Gra Terenowa · Odkryj nadmorskie skarby
-          </p>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 px-4 pt-4 pb-6 flex flex-col gap-[14px]">
-
-        {/* User info */}
-        <div className="bg-white rounded-3xl p-4 shadow-card flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-ocean-100 flex items-center justify-center shrink-0">
-            <User size={22} className="text-ocean-400" strokeWidth={1.8} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-ocean-900 text-sm leading-tight">Gość</p>
-            <p className="text-gray-400 text-xs mt-0.5 truncate">Zaloguj się, aby zapisać postępy</p>
-          </div>
-          <Link
-            href="/login"
-            className="text-xs text-ocean-500 font-semibold bg-ocean-50 px-3 py-1.5 rounded-xl shrink-0 active:bg-ocean-100 transition-colors"
+          {/* Bottom sheet */}
+          <div
+            ref={sheetRef}
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl"
+            style={{ animation: 'slideUp 0.25s ease-out' }}
           >
-            Zaloguj
-          </Link>
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            </div>
+
+            {selected && (
+              <div className="px-5 pb-6">
+                {/* Photo + info row */}
+                <div className="flex gap-4 items-start mb-4">
+                  {(isDiscovered ? selected.imageUrl : selected.outlineImageUrl ?? selected.imageUrl) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={(isDiscovered ? selected.imageUrl : selected.outlineImageUrl ?? selected.imageUrl) ?? ''}
+                      alt={selected.name}
+                      className={`w-20 h-20 rounded-2xl object-cover shrink-0 ${!isDiscovered ? 'grayscale opacity-60' : ''}`}
+                    />
+                  ) : (
+                    <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-3xl shrink-0 ${isDiscovered ? 'bg-ocean-100' : 'bg-gray-100'}`}>
+                      {isDiscovered ? '📍' : '❓'}
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0 pt-1">
+                    <span className="text-xs font-semibold text-ocean-500 bg-ocean-50 px-2 py-0.5 rounded-full">
+                      {CATEGORY_LABELS[selected.category] ?? selected.category}
+                    </span>
+                    <h2 className="text-base font-extrabold text-ocean-900 mt-1 leading-tight">
+                      {isDiscovered ? selected.name : '???'}
+                    </h2>
+                    {selected.address && isDiscovered && (
+                      <p className="text-gray-400 text-xs mt-0.5 truncate">{selected.address}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Description / hint */}
+                <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-3">
+                  {isDiscovered
+                    ? selected.description
+                    : '🔍 Znajdź ten obiekt w Karwi i zeskanuj kod QR, by go odkryć!'}
+                </p>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  {isDiscovered ? (
+                    <button
+                      onClick={() => { closeSheet(); router.push(`/budynek/${selected.id}`); }}
+                      className="flex-1 flex items-center justify-center gap-2 bg-ocean-500 text-white py-3 rounded-2xl font-bold text-sm"
+                    >
+                      <ExternalLink size={16} />
+                      Zobacz szczegóły
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { closeSheet(); router.push('/skanuj'); }}
+                      className="flex-1 flex items-center justify-center gap-2 bg-ocean-500 text-white py-3 rounded-2xl font-bold text-sm"
+                    >
+                      <QrCode size={16} />
+                      Skanuj kod QR
+                    </button>
+                  )}
+                  <button
+                    onClick={closeSheet}
+                    className="w-12 flex items-center justify-center bg-gray-100 rounded-2xl text-gray-400"
+                  >
+                    <ChevronDown size={20} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+      )}
 
-        <p className="text-center text-ocean-600 font-semibold text-xs uppercase tracking-widest">
-          Co chcesz zrobić?
-        </p>
-
-        <Link href="/odkrycia" className="block">
-          <div className="group bg-white rounded-3xl p-5 shadow-card transition-all duration-200 flex items-center gap-4 active:scale-[0.98]">
-            <div className="w-14 h-14 rounded-2xl bg-ocean-50 flex items-center justify-center group-hover:bg-ocean-100 transition-colors shrink-0">
-              <Compass size={28} className="text-ocean-500" strokeWidth={1.8} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-ocean-900 text-base">Moje Odkrycia</h2>
-              <p className="text-gray-500 text-sm mt-0.5">Budynki, które już odkryłeś</p>
-            </div>
-            <span className="text-ocean-300 text-lg shrink-0">›</span>
-          </div>
-        </Link>
-
-        <Link href="/osiagniecia" className="block">
-          <div className="group bg-white rounded-3xl p-5 shadow-card transition-all duration-200 flex items-center gap-4 active:scale-[0.98]">
-            <div className="w-14 h-14 rounded-2xl bg-sand-50 flex items-center justify-center group-hover:bg-sand-100 transition-colors shrink-0">
-              <Trophy size={28} className="text-sand-500" strokeWidth={1.8} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-ocean-900 text-base">Moje Osiągnięcia</h2>
-              <p className="text-gray-500 text-sm mt-0.5">Odznaki i nagrody odkrywcy</p>
-            </div>
-            <span className="text-ocean-300 text-lg shrink-0">›</span>
-          </div>
-        </Link>
-
-        <Link href="/baza" className="block">
-          <div className="group bg-white rounded-3xl p-5 shadow-card transition-all duration-200 flex items-center gap-4 active:scale-[0.98]">
-            <div className="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center group-hover:bg-cyan-100 transition-colors shrink-0">
-              <BookOpen size={28} className="text-cyan-600" strokeWidth={1.8} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-ocean-900 text-base">Baza Budynków</h2>
-              <p className="text-gray-500 text-sm mt-0.5">Wszystkie miejsca w Karwi</p>
-            </div>
-            <span className="text-ocean-300 text-lg shrink-0">›</span>
-          </div>
-        </Link>
-
-        {/* Footer */}
-        <div className="text-center pt-2">
-          <a
-            href="https://www.karwia.pl"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-ocean-400 text-xs hover:text-ocean-500 underline underline-offset-2"
-          >
-            🌊 Karwia · morze radości od 750 lat
-          </a>
-        </div>
-      </div>
+      <style jsx global>{`
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

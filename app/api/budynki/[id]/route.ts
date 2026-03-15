@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   const body = await req.json();
-  const { name, description, address, lat, lng, imageUrl, qrUrl, category, gallery } = body;
+  const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery } = body;
 
   try {
     const building = await prisma.building.update({
@@ -38,6 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         ...(lat != null && { lat: Number(lat) }),
         ...(lng != null && { lng: Number(lng) }),
         ...(imageUrl !== undefined && { imageUrl }),
+        ...(outlineImageUrl !== undefined && { outlineImageUrl }),
         ...(qrUrl && { qrUrl }),
         ...(category && { category }),
         ...(gallery !== undefined && {

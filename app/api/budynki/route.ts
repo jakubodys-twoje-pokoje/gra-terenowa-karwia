@@ -7,7 +7,7 @@ export async function GET() {
       orderBy: { name: 'asc' },
       select: {
         id: true, name: true, description: true, address: true,
-        lat: true, lng: true, imageUrl: true, category: true, qrUrl: true,
+        lat: true, lng: true, imageUrl: true, outlineImageUrl: true, category: true, qrUrl: true,
         images: { orderBy: { order: 'asc' }, select: { id: true, url: true, order: true } },
       },
     });
@@ -18,7 +18,7 @@ export async function GET() {
       orderBy: { name: 'asc' },
       select: {
         id: true, name: true, description: true, address: true,
-        lat: true, lng: true, imageUrl: true, category: true, qrUrl: true,
+        lat: true, lng: true, imageUrl: true, outlineImageUrl: true, category: true, qrUrl: true,
       },
     });
     return NextResponse.json(buildings.map((b) => ({ ...b, images: [] })));
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, description, address, lat, lng, imageUrl, qrUrl, category, gallery } = body;
+  const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery } = body;
 
   if (!name || !description || lat == null || lng == null || !qrUrl) {
     return NextResponse.json({ error: 'Brakujące pola' }, { status: 400 });
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const building = await prisma.building.create({
       data: {
         name, description, address, lat: Number(lat), lng: Number(lng),
-        imageUrl, qrUrl, category: category || 'landmark',
+        imageUrl, outlineImageUrl, qrUrl, category: category || 'landmark',
         images: {
           create: ((gallery as string[] | undefined) ?? [])
             .filter((url) => url.trim())

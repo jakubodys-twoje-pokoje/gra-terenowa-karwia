@@ -21,6 +21,7 @@ interface Building {
   lat: number;
   lng: number;
   imageUrl?: string;
+  outlineImageUrl?: string;
   qrUrl: string;
   category: string;
   images: BuildingImage[];
@@ -38,7 +39,7 @@ const CATEGORIES = [
 const EMPTY_FORM = {
   name: '', description: '', address: '',
   lat: '54.7505', lng: '17.8670',
-  imageUrl: '', qrUrl: '', category: 'landmark',
+  imageUrl: '', outlineImageUrl: '', qrUrl: '', category: 'landmark',
 };
 
 export default function AdminPage() {
@@ -87,6 +88,7 @@ export default function AdminPage() {
       ...form,
       lat: parseFloat(form.lat),
       lng: parseFloat(form.lng),
+      outlineImageUrl: form.outlineImageUrl || null,
       gallery: gallery.filter((u) => u.trim()),
     };
 
@@ -117,7 +119,7 @@ export default function AdminPage() {
     setForm({
       name: b.name, description: b.description, address: b.address ?? '',
       lat: String(b.lat), lng: String(b.lng),
-      imageUrl: b.imageUrl ?? '', qrUrl: b.qrUrl, category: b.category,
+      imageUrl: b.imageUrl ?? '', outlineImageUrl: b.outlineImageUrl ?? '', qrUrl: b.qrUrl, category: b.category,
     });
     setGallery(b.images.map((img) => img.url));
     setEditingId(b.id);
@@ -316,6 +318,12 @@ export default function AdminPage() {
               placeholder="URL zdjęcia okładkowego (opcjonalnie)"
               value={form.imageUrl}
               onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+              className="w-full border border-gray-200 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400"
+            />
+            <input
+              placeholder="URL zdjęcia obrysu / sylwetki (nieodkryte — opcjonalnie)"
+              value={form.outlineImageUrl}
+              onChange={(e) => setForm((f) => ({ ...f, outlineImageUrl: e.target.value }))}
               className="w-full border border-gray-200 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400"
             />
 

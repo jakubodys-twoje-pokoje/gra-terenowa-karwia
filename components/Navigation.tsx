@@ -2,15 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, Trophy, Compass, BookOpen, QrCode } from 'lucide-react';
+import { User, Compass, BookOpen, QrCode, Map } from 'lucide-react';
 import clsx from 'clsx';
 
 const navItems = [
-  { href: '/odkrycia', label: 'Odkrycia', Icon: Compass },
+  { href: '/', label: 'Mapa', Icon: Map },
   { href: '/baza', label: 'Baza', Icon: BookOpen },
   { href: '/skanuj', label: 'Skanuj', Icon: QrCode, primary: true },
-  { href: '/osiagniecia', label: 'Odznaki', Icon: Trophy },
-  { href: '/', label: 'Menu', Icon: Settings },
+  { href: '/odkrycia', label: 'Odkrycia', Icon: Compass },
+  { href: '/profil', label: 'Profil', Icon: User },
 ];
 
 export default function Navigation() {

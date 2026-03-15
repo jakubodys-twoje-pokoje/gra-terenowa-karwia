@@ -8,19 +8,20 @@ datasource db {
 }
 
 model Building {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String
-  address     String?
-  lat         Float
-  lng         Float
-  imageUrl    String?
-  qrUrl       String   @unique
-  category    String   @default("landmark")
-  discoveries UserDiscovery[]
-  images      BuildingImage[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  name            String
+  description     String
+  address         String?
+  lat             Float
+  lng             Float
+  imageUrl        String?
+  outlineImageUrl String?
+  qrUrl           String   @unique
+  category        String   @default("landmark")
+  discoveries     UserDiscovery[]
+  images          BuildingImage[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model BuildingImage {
@@ -40,4 +41,15 @@ model UserDiscovery {
 
   @@unique([userId, buildingId])
   @@index([userId])
+}
+
+model UserProfile {
+  id           Int      @id @default(autoincrement())
+  userId       String   @unique
+  nickname     String?
+  email        String?
+  city         String?
+  avatarUrl    String?
+  registeredAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

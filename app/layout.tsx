@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Navigation from '@/components/Navigation';
 import PortraitGuard from '@/components/PortraitGuard';
+import ClientWrapper from '@/components/ClientWrapper';
 
 export const metadata: Metadata = {
   title: 'Karwia – Gra Terenowa',
@@ -24,9 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pl">
       <body className="max-w-lg mx-auto relative">
-        <main className="pb-24 min-h-screen">
-          {children}
-        </main>
+        <ClientWrapper>{children}</ClientWrapper>
         <Navigation />
         <PortraitGuard />
       </body>
