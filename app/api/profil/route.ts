@@ -1,24 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId');
   if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
 
   const profile = await prisma.userProfile.findUnique({ where: { userId } });
-  if (!profile) return NextResponse.json({ userId, nickname: null, email: null, city: null, avatarUrl: null });
+  if (!profile) return NextResponse.json(null);
   return NextResponse.json(profile);
 }
 
 export async function PUT(req: NextRequest) {
-  const body = await req.json();
-  const { userId, nickname, email, city, avatarUrl } = body;
-  if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+  // Only authenticated (verified) users can update profile
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const profile = await prisma.userProfile.upsert({
-    where: { userId },
-    update: { nickname, email, city, avatarUrl },
-    create: { userId, nickname, email, city, avatarUrl },
+  const body = await req.json();
+  const { nickname, city, avatarUrl } = body;
+
+  // Only allow updating own profile; email cannot be changed here
+  const profile = await prisma.userProfile.update({
+    where: { userId: session.userId },
+    data: { nickname, city, avatarUrl },
   });
   return NextResponse.json(profile);
 }
