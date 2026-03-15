@@ -22,12 +22,14 @@ function RegisterForm() {
       fetch(`/api/profil?userId=${guestUserId}`).then(async (r) => {
         if (r.ok) {
           const p = await r.json();
-          setForm((f) => ({
-            ...f,
-            nickname: p.nickname ?? '',
-            email: p.email ?? '',
-            city: p.city ?? '',
-          }));
+          if (p) {
+            setForm((f) => ({
+              ...f,
+              nickname: p.nickname ?? '',
+              email: p.email ?? '',
+              city: p.city ?? '',
+            }));
+          }
         }
       });
     }
@@ -46,8 +48,6 @@ function RegisterForm() {
     });
 
     if (res.ok) {
-      const data = await res.json();
-      localStorage.setItem('karwia_user_id', data.userId);
       // Don't fetchMe yet — user needs to verify email first
       router.push('/weryfikacja');
     } else {
