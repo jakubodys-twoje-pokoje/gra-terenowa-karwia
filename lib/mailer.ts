@@ -14,7 +14,7 @@ const FROM = process.env.SMTP_FROM ?? 'Karwia Odkrywca <noreply@karwia.pl>';
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://odkrywca.karwia.pl';
 
 export async function sendVerificationEmail(email: string, token: string) {
-  const link = `${BASE_URL}/weryfikacja?token=${token}`;
+  const link = `${BASE_URL}/api/auth/verify?token=${token}`;
 
   await transporter.sendMail({
     from: FROM,
