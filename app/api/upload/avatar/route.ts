@@ -11,8 +11,13 @@ export async function POST(req: NextRequest) {
   if (!file.type.startsWith('image/')) return NextResponse.json({ error: 'Only images allowed' }, { status: 400 });
   if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: 'Max 5 MB' }, { status: 400 });
 
-  const ext = file.type.includes('png') ? 'png' : 'jpg';
-  const filename = `${userId.replace(/[^a-z0-9-]/gi, '_')}.${ext}`;
+  const mimeToExt: Record<string, string> = {
+    'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+    'image/gif': 'gif', 'image/webp': 'webp', 'image/heic': 'jpg', 'image/heif': 'jpg',
+  };
+  const ext = mimeToExt[file.type] ?? 'jpg';
+  // Include timestamp so browser doesn't cache stale version
+  const filename = `${userId.replace(/[^a-z0-9-]/gi, '_')}_${Date.now()}.${ext}`;
   const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
   await mkdir(uploadsDir, { recursive: true });
 

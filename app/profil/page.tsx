@@ -43,24 +43,34 @@ export default function ProfilPage() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Show local preview immediately
+    const localPreview = URL.createObjectURL(file);
+    setAvatarUrl(localPreview);
     setUploadingAvatar(true);
+
     const userId = getUserId();
     const fd = new FormData();
     fd.append('file', file);
     fd.append('userId', userId);
+
     const res = await fetch('/api/upload/avatar', { method: 'POST', body: fd });
     if (res.ok) {
       const { url } = await res.json();
-      setAvatarUrl(url);
-      // Auto-save avatar immediately
+      // Add timestamp to bust browser cache
+      const urlWithCache = `${url}?t=${Date.now()}`;
+      setAvatarUrl(urlWithCache);
       await fetch('/api/profil', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, avatarUrl: url, ...form }),
       });
+    } else {
+      // Revert preview on error
+      setAvatarUrl(null);
     }
+    URL.revokeObjectURL(localPreview);
     setUploadingAvatar(false);
-    // Reset input so same file can be selected again
     e.target.value = '';
   };
 
@@ -122,7 +132,6 @@ export default function ProfilPage() {
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="user"
           className="hidden"
           onChange={handleAvatarChange}
         />
