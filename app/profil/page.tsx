@@ -133,14 +133,26 @@ export default function ProfilPage() {
           <p className="font-semibold text-amber-800 mb-0.5">Grasz jako gość</p>
           <p className="text-amber-600 text-xs">
             Postępy są zapisane tylko na tym urządzeniu.{' '}
-            <button
-              onClick={() => router.push(`/rejestracja?guest=${getUserId()}`)}
-              className="underline font-semibold"
-            >
+            <button onClick={() => router.push(`/rejestracja?guest=${getUserId()}`)} className="underline font-semibold">
               Utwórz konto
             </button>
             , by nie stracić odkryć.
           </p>
+        </div>
+      )}
+
+      {!authLoading && user && !user.emailVerified && (
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 mb-5 text-sm">
+          <p className="font-semibold text-orange-800 mb-0.5">⚠️ Email niepotwierdzony</p>
+          <p className="text-orange-600 text-xs mb-2">
+            Sprawdź skrzynkę <strong>{user.email}</strong> i kliknij link aktywacyjny.
+          </p>
+          <button
+            onClick={() => router.push('/weryfikacja')}
+            className="text-xs font-semibold text-orange-700 underline"
+          >
+            Wyślij link ponownie
+          </button>
         </div>
       )}
 

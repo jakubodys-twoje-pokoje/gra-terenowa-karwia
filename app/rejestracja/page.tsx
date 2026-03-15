@@ -48,8 +48,8 @@ function RegisterForm() {
     if (res.ok) {
       const data = await res.json();
       localStorage.setItem('karwia_user_id', data.userId);
-      await fetchMe();
-      router.push('/');
+      // Don't fetchMe yet — user needs to verify email first
+      router.push('/weryfikacja');
     } else {
       const err = await res.json();
       setError(err.error ?? 'Błąd rejestracji');

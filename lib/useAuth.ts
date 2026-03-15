@@ -8,6 +8,7 @@ export interface AuthUser {
   nickname: string | null;
   city: string | null;
   avatarUrl: string | null;
+  emailVerified: boolean;
 }
 
 let cache: AuthUser | null | undefined = undefined; // undefined = not fetched yet

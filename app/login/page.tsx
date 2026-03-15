@@ -44,6 +44,10 @@ export default function LoginPage() {
       router.push('/');
     } else {
       const err = await res.json();
+      if (err.needsVerification) {
+        router.push('/weryfikacja');
+        return;
+      }
       setError(err.error ?? 'Błąd logowania');
     }
     setLoading(false);
