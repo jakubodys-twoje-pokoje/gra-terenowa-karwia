@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { containsProfanity } from '@/lib/profanity';
 
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId');
@@ -18,6 +19,9 @@ export async function PUT(req: NextRequest) {
 
   const body = await req.json();
   const { nickname, city, avatarUrl } = body;
+
+  if (containsProfanity(nickname)) return NextResponse.json({ error: 'Pseudonim zawiera niedozwolone słowa.' }, { status: 400 });
+  if (containsProfanity(city)) return NextResponse.json({ error: 'Miejscowość zawiera niedozwolone słowa.' }, { status: 400 });
 
   // Only allow updating own profile; email cannot be changed here
   const profile = await prisma.userProfile.update({

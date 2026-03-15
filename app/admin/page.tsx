@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Plus, Trash2, Edit3, Lock, Check, X, Images } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock } from 'lucide-react';
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
@@ -42,11 +42,25 @@ const EMPTY_FORM = {
   imageUrl: '', outlineImageUrl: '', qrUrl: '', category: 'landmark',
 };
 
+interface UserEntry {
+  userId: string;
+  nickname: string | null;
+  email: string | null;
+  city: string | null;
+  avatarUrl: string | null;
+  emailVerified: boolean;
+  registeredAt: string;
+  discoveryCount: number;
+}
+
 export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [authed, setAuthed] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [activeTab, setActiveTab] = useState<'budynki' | 'uzytkownicy'>('budynki');
   const [buildings, setBuildings] = useState<Building[]>([]);
+  const [users, setUsers] = useState<UserEntry[]>([]);
+  const [guestCount, setGuestCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [gallery, setGallery] = useState<string[]>([]);
@@ -59,18 +73,40 @@ export default function AdminPage() {
 
   const loadBuildings = useCallback(async (pwd: string) => {
     setLoading(true);
-    const res = await fetch('/api/budynki', {
-      headers: { 'x-admin-password': pwd },
-    });
+    const res = await fetch('/api/budynki', { headers: { 'x-admin-password': pwd } });
     if (res.ok) setBuildings(await res.json());
     setLoading(false);
   }, []);
+
+  const loadUsers = useCallback(async (pwd: string) => {
+    const res = await fetch('/api/admin/users', { headers: { 'x-admin-password': pwd } });
+    if (res.ok) {
+      const data = await res.json();
+      setUsers(data.users);
+      setGuestCount(data.guestCount);
+    }
+  }, []);
+
+  const handleDeleteUser = async (userId: string, email: string | null) => {
+    if (!confirm(`Usunąć użytkownika "${email ?? userId}"? Zostaną usunięte też jego odkrycia.`)) return;
+    const res = await fetch('/api/admin/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+      body: JSON.stringify({ userId }),
+    });
+    if (res.ok) {
+      setUsers((u) => u.filter((x) => x.userId !== userId));
+      setSuccess('Użytkownik usunięty');
+      setTimeout(() => setSuccess(''), 3000);
+    }
+  };
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
     sessionStorage.setItem('admin_pass', password);
     setAuthed(true);
     loadBuildings(password);
+    loadUsers(password);
   };
 
   const handleMapClick = (lat: number, lng: number) => {
@@ -156,8 +192,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem('admin_pass');
-    if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); }
-  }, [loadBuildings]);
+    if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); }
+  }, [loadBuildings, loadUsers]);
 
   if (!authed) {
     return (
@@ -195,17 +231,31 @@ export default function AdminPage() {
 
   return (
     <div className="px-4 pt-6 pb-8">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-extrabold text-ocean-900">Panel Admina</h1>
-          <p className="text-gray-400 text-xs">{buildings.length} budynków w bazie</p>
+          <p className="text-gray-400 text-xs">{buildings.length} budynków · {users.length} kont · {guestCount} gości</p>
         </div>
-        <button
-          onClick={() => { cancelForm(); setShowForm(true); }}
-          className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-lg shadow-ocean-500/30"
-        >
-          <Plus size={16} />
-          Dodaj
+        {activeTab === 'budynki' && (
+          <button
+            onClick={() => { cancelForm(); setShowForm(true); }}
+            className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-lg shadow-ocean-500/30"
+          >
+            <Plus size={16} />
+            Dodaj
+          </button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex bg-gray-100 rounded-2xl p-1 mb-5 gap-1">
+        <button onClick={() => setActiveTab('budynki')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'budynki' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400'}`}>
+          <Building2 size={13} /> Budynki
+        </button>
+        <button onClick={() => setActiveTab('uzytkownicy')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'uzytkownicy' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400'}`}>
+          <Users size={13} /> Użytkownicy
         </button>
       </div>
 
@@ -391,48 +441,97 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Buildings list */}
-      {loading ? (
-        <div className="flex justify-center py-10">
-          <div className="w-8 h-8 border-3 border-ocean-400 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
+      {/* BUDYNKI TAB */}
+      {activeTab === 'budynki' && (
+        loading ? (
+          <div className="flex justify-center py-10">
+            <div className="w-8 h-8 border-3 border-ocean-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {buildings.map((b) => (
+              <div key={b.id} className="bg-white rounded-2xl shadow-card p-4">
+                <div className="flex items-start gap-3">
+                  {b.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={b.imageUrl} alt={b.name} className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-ocean-900 text-sm">{b.name}</h3>
+                    <p className="text-gray-400 text-xs mt-0.5 truncate">{b.qrUrl}</p>
+                    <p className="text-gray-300 text-xs">{b.lat.toFixed(4)}, {b.lng.toFixed(4)}</p>
+                    {b.images.length > 0 && (
+                      <p className="text-ocean-400 text-xs mt-0.5">
+                        <Images size={10} className="inline mr-0.5" />
+                        {b.images.length} zdjęć w galerii
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleEdit(b)} className="p-2 rounded-xl bg-ocean-50 text-ocean-500 hover:bg-ocean-100">
+                      <Edit3 size={15} />
+                    </button>
+                    <button onClick={() => handleDelete(b.id, b.name)} className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* UŻYTKOWNICY TAB */}
+      {activeTab === 'uzytkownicy' && (
         <div className="space-y-3">
-          {buildings.map((b) => (
-            <div key={b.id} className="bg-white rounded-2xl shadow-card p-4">
-              <div className="flex items-start gap-3">
-                {b.imageUrl && (
+          <div className="bg-gray-50 rounded-2xl px-4 py-2.5 text-xs text-gray-500 flex gap-4">
+            <span><strong className="text-ocean-700">{users.length}</strong> zarejestrowanych</span>
+            <span><strong className="text-green-600">{users.filter(u => u.emailVerified).length}</strong> zweryfikowanych</span>
+            <span><strong className="text-gray-400">{guestCount}</strong> gości</span>
+          </div>
+
+          {users.map((u) => (
+            <div key={u.userId} className="bg-white rounded-2xl shadow-card p-4">
+              <div className="flex items-center gap-3">
+                {u.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.imageUrl} alt={b.name} className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                  <img src={u.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-ocean-100 flex items-center justify-center shrink-0">
+                    <Users size={16} className="text-ocean-400" />
+                  </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-ocean-900 text-sm">{b.name}</h3>
-                  <p className="text-gray-400 text-xs mt-0.5 truncate">{b.qrUrl}</p>
-                  <p className="text-gray-300 text-xs">{b.lat.toFixed(4)}, {b.lng.toFixed(4)}</p>
-                  {b.images.length > 0 && (
-                    <p className="text-ocean-400 text-xs mt-0.5">
-                      <Images size={10} className="inline mr-0.5" />
-                      {b.images.length} zdjęć w galerii
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-ocean-900 text-sm truncate">
+                      {u.nickname ?? <span className="text-gray-400 font-normal italic">Bez pseudonimu</span>}
                     </p>
-                  )}
+                    {u.emailVerified
+                      ? <CheckCircle size={13} className="text-green-500 shrink-0" />
+                      : <XCircle size={13} className="text-orange-400 shrink-0" />
+                    }
+                  </div>
+                  <p className="text-gray-400 text-xs truncate">{u.email ?? '—'}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {u.city && <span className="text-gray-300 text-xs">{u.city}</span>}
+                    <span className="text-ocean-500 text-xs font-semibold">{u.discoveryCount} odkryć</span>
+                    <span className="text-gray-300 text-xs">{new Date(u.registeredAt).toLocaleDateString('pl')}</span>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => handleEdit(b)}
-                    className="p-2 rounded-xl bg-ocean-50 text-ocean-500 hover:bg-ocean-100"
-                  >
-                    <Edit3 size={15} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(b.id, b.name)}
-                    className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleDeleteUser(u.userId, u.email)}
+                  className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 shrink-0"
+                >
+                  <Trash2 size={15} />
+                </button>
               </div>
             </div>
           ))}
+
+          {users.length === 0 && (
+            <div className="text-center py-10 text-gray-400 text-sm">Brak zarejestrowanych użytkowników</div>
+          )}
         </div>
       )}
     </div>

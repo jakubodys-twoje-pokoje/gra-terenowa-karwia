@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { sendVerificationEmail } from '@/lib/mailer';
+import { containsProfanity } from '@/lib/profanity';
 
 function makeToken(): string {
   const bytes = new Uint8Array(32);
@@ -14,6 +15,10 @@ export async function POST(req: NextRequest) {
 
   if (!email || !password) return NextResponse.json({ error: 'Email i hasło są wymagane' }, { status: 400 });
   if (password.length < 6) return NextResponse.json({ error: 'Hasło musi mieć min. 6 znaków' }, { status: 400 });
+
+  if (containsProfanity(email)) return NextResponse.json({ error: 'Adres email zawiera niedozwolone słowa.' }, { status: 400 });
+  if (containsProfanity(nickname)) return NextResponse.json({ error: 'Pseudonim zawiera niedozwolone słowa.' }, { status: 400 });
+  if (containsProfanity(city)) return NextResponse.json({ error: 'Miejscowość zawiera niedozwolone słowa.' }, { status: 400 });
 
   const existing = await prisma.userProfile.findUnique({ where: { email } });
   if (existing) return NextResponse.json({ error: 'Ten adres email jest już zajęty' }, { status: 409 });
