@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { QrCode, MapPin, ChevronDown, ExternalLink } from 'lucide-react';
-import type { MapBuilding } from '@/components/MapComponent';
+import { QrCode, MapPin, ChevronDown, ExternalLink, Navigation } from 'lucide-react';
+import type { MapBuilding, MapHandle } from '@/components/MapComponent';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
 
@@ -35,13 +35,25 @@ function getUserId(): string {
   return id;
 }
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export default function MapPage() {
-  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [buildings, setBuildings]         = useState<Building[]>([]);
   const [discoveredIds, setDiscoveredIds] = useState<Set<number>>(new Set());
-  const [selected, setSelected] = useState<Building | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [selected, setSelected]           = useState<Building | null>(null);
+  const [sheetOpen, setSheetOpen]         = useState(false);
+  const [nearestToast, setNearestToast]   = useState('');
+  const [nearestLoading, setNearestLoading] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+  const mapRef   = useRef<MapHandle>(null);
+  const router   = useRouter();
 
   const load = useCallback(async () => {
     const userId = getUserId();
@@ -66,21 +78,65 @@ export default function MapPage() {
 
   const closeSheet = () => setSheetOpen(false);
 
-  // Close sheet on backdrop tap
   const handleBackdrop = (e: React.MouseEvent) => {
     if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
       closeSheet();
     }
   };
 
+  // ── Nearest building button ───────────────────────────────────────────────
+  const handleNearest = () => {
+    if (buildings.length === 0) return;
+    if (!navigator.geolocation) {
+      setNearestToast('Twoja przeglądarka nie obsługuje GPS');
+      setTimeout(() => setNearestToast(''), 3000);
+      return;
+    }
+
+    setNearestLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+
+        // Find closest building (any, not just undiscovered)
+        let nearest = buildings[0];
+        let minDist = haversineKm(latitude, longitude, nearest.lat, nearest.lng);
+
+        buildings.forEach((b) => {
+          const d = haversineKm(latitude, longitude, b.lat, b.lng);
+          if (d < minDist) { minDist = d; nearest = b; }
+        });
+
+        // Pan map to it and open the sheet
+        mapRef.current?.panTo(nearest.lat, nearest.lng, 17);
+        setSelected(nearest);
+        setSheetOpen(true);
+        setNearestLoading(false);
+
+        const distLabel = minDist < 1
+          ? `${Math.round(minDist * 1000)} m`
+          : `${minDist.toFixed(1)} km`;
+        setNearestToast(
+          discoveredIds.has(nearest.id)
+            ? `📍 ${nearest.name} – ${distLabel} stąd`
+            : `🔍 Najbliższy obiekt – ${distLabel} stąd`,
+        );
+        setTimeout(() => setNearestToast(''), 4000);
+      },
+      () => {
+        setNearestLoading(false);
+        setNearestToast('Nie udało się pobrać lokalizacji — sprawdź uprawnienia GPS');
+        setTimeout(() => setNearestToast(''), 4000);
+      },
+      { timeout: 8000, maximumAge: 30000 },
+    );
+  };
+
   const mapBuildings: MapBuilding[] = buildings.map((b) => ({
-    id: b.id,
-    name: b.name,
-    lat: b.lat,
-    lng: b.lng,
+    id: b.id, name: b.name, lat: b.lat, lng: b.lng,
     discovered: discoveredIds.has(b.id),
-    imageUrl: b.imageUrl,
-    outlineImageUrl: b.outlineImageUrl,
+    imageUrl: b.imageUrl, outlineImageUrl: b.outlineImageUrl,
   }));
 
   const isDiscovered = selected ? discoveredIds.has(selected.id) : false;
@@ -89,6 +145,7 @@ export default function MapPage() {
     <div className="relative h-full overflow-hidden">
       {/* Full-screen map */}
       <MapComponent
+        ref={mapRef}
         buildings={mapBuildings}
         height="100%"
         zoom={17}
@@ -106,13 +163,30 @@ export default function MapPage() {
         </div>
       )}
 
+      {/* ── Nearest building button ── */}
+      <button
+        onClick={handleNearest}
+        disabled={nearestLoading || buildings.length === 0}
+        className="absolute bottom-24 right-4 z-[500] bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3.5 py-3 flex items-center gap-2 hover:bg-white active:scale-95 transition-all disabled:opacity-50"
+        title="Najbliższy obiekt"
+      >
+        <Navigation
+          size={18}
+          className={`text-ocean-500 ${nearestLoading ? 'animate-pulse' : ''}`}
+        />
+        <span className="text-xs font-bold text-ocean-800 leading-none">Najbliżej</span>
+      </button>
+
+      {/* Nearest toast */}
+      {nearestToast && (
+        <div className="absolute top-16 inset-x-4 z-[550] bg-ocean-700 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-xl animate-in slide-in-from-top-4">
+          {nearestToast}
+        </div>
+      )}
+
       {/* Bottom sheet backdrop */}
       {sheetOpen && (
-        <div
-          className="absolute inset-0 z-[600]"
-          onClick={handleBackdrop}
-        >
-          {/* Bottom sheet */}
+        <div className="absolute inset-0 z-[600]" onClick={handleBackdrop}>
           <div
             ref={sheetRef}
             className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl"
@@ -153,14 +227,12 @@ export default function MapPage() {
                   </div>
                 </div>
 
-                {/* Description / hint */}
                 <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-3">
                   {isDiscovered
                     ? selected.description
                     : '🔍 Znajdź ten obiekt w Karwi i zeskanuj kod QR, by go odkryć!'}
                 </p>
 
-                {/* Actions */}
                 <div className="flex gap-3">
                   {isDiscovered ? (
                     <button
@@ -195,7 +267,7 @@ export default function MapPage() {
       <style jsx global>{`
         @keyframes slideUp {
           from { transform: translateY(100%); }
-          to { transform: translateY(0); }
+          to   { transform: translateY(0); }
         }
       `}</style>
     </div>

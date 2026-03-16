@@ -5,6 +5,7 @@ import Navigation from '@/components/Navigation';
 import PortraitGuard from '@/components/PortraitGuard';
 import ClientWrapper from '@/components/ClientWrapper';
 import WelcomeModal from '@/components/WelcomeModal';
+import PageTransition from '@/components/PageTransition';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://karwia.app'),
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pl">
       <body className="max-w-lg mx-auto relative">
         <ClientWrapper>{children}</ClientWrapper>
+        <PageTransition />
         <Navigation />
         <PortraitGuard />
         <Suspense><WelcomeModal /></Suspense>
