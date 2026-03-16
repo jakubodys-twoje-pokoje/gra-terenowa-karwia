@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, MapPin, Navigation, Check } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Check, Lock, QrCode } from 'lucide-react';
 import Link from 'next/link';
 import clsx from 'clsx';
 import type { MapBuilding } from '@/components/MapComponent';
@@ -19,11 +19,7 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   nature:     { label: '🌿 Natura',    color: 'bg-green-100 text-green-700' },
 };
 
-interface BuildingImage {
-  id: number;
-  url: string;
-  order: number;
-}
+interface BuildingImage { id: number; url: string; order: number; }
 
 interface Building {
   id: number;
@@ -33,6 +29,7 @@ interface Building {
   lat: number;
   lng: number;
   imageUrl: string | null;
+  outlineImageUrl: string | null;
   category: string;
   qrUrl: string;
   images: BuildingImage[];
@@ -50,10 +47,7 @@ interface NearbyBuilding {
 
 function getUserId(): string {
   let id = localStorage.getItem('karwia_user_id');
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('karwia_user_id', id);
-  }
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('karwia_user_id', id); }
   return id;
 }
 
@@ -72,72 +66,71 @@ export default function BudynekPage() {
   const [showAchievementToast, setShowAchievementToast] = useState(false);
 
   const load = useCallback(async () => {
-    const celebratedKey = `karwia_celebrated_${id}`;
-    const alreadyCelebrated = localStorage.getItem(celebratedKey) !== null;
+    const userId = getUserId();
     const isScan = searchParams.get('scan') === '1';
 
-    // Show discovered badge if already in localStorage
-    if (alreadyCelebrated) setDiscovered(true);
+    // If arriving from QR scan, mark as discovered first
+    if (isScan) {
+      await fetch('/api/odkrycia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, buildingId: Number(id) }),
+      });
+    }
 
-    const [bRes, nRes] = await Promise.all([
+    // Fetch building, nearby, and verify discovery status server-side in parallel
+    const [bRes, nRes, discRes] = await Promise.all([
       fetch(`/api/budynki/${id}`),
       fetch(`/api/budynki/${id}/najblizsze`),
+      fetch(`/api/odkrycia?userId=${userId}`),
     ]);
 
     if (!bRes.ok) { setNotFound(true); setLoading(false); return; }
 
     const b: Building = await bRes.json();
     const n: NearbyBuilding[] = nRes.ok ? await nRes.json() : [];
+    const discoveries: { building: { id: number } }[] = discRes.ok ? await discRes.json() : [];
+
+    // Ground-truth discovery check from server — cannot be spoofed via localStorage
+    const isDiscovered = discoveries.some((d) => d.building.id === Number(id));
+
     setBuilding(b);
     setNearby(n);
+    setDiscovered(isDiscovered);
     setLoading(false);
 
-    // Only trigger discovery flow when coming from QR scan
+    // If not discovered, stop here — locked view will be shown
+    if (!isDiscovered) return;
+
+    // Toasts and achievements only on a fresh scan
     if (!isScan) return;
 
-    // Mark on server (idempotent upsert)
-    const userId = getUserId();
-    await fetch('/api/odkrycia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, buildingId: Number(id) }),
-    });
-
-    setDiscovered(true);
-
-    // Don't show toasts again if already celebrated
-    if (alreadyCelebrated) return;
-
-    // Mark as celebrated in localStorage immediately
+    const celebratedKey = `karwia_celebrated_${id}`;
+    if (localStorage.getItem(celebratedKey)) return;
     localStorage.setItem(celebratedKey, '1');
 
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
 
-    // Check for new achievements
-    const [allDiscoveries, allBuildings] = await Promise.all([
-      fetch(`/api/odkrycia?userId=${userId}`).then((r) => r.json()),
-      fetch('/api/budynki').then((r) => r.json()),
-    ]);
-
+    // Check for newly unlocked achievements
+    const allBuildings = await fetch('/api/budynki').then((r) => r.json());
     const { getUnlockedAchievements } = await import('@/lib/achievements');
-    const cats = allDiscoveries.map((d: { building: { category: string } }) => d.building.category);
-    const prevCount = allDiscoveries.length - 1;
+    const cats = discoveries.map((d) => (d as unknown as { building: { category: string } }).building.category);
+    const prevCount = discoveries.length - 1;
     const prevUnlocked = new Set(
       getUnlockedAchievements(prevCount, allBuildings.length, cats).map((a) => a.id)
     );
-    const newUnlocked = getUnlockedAchievements(allDiscoveries.length, allBuildings.length, cats);
-    const justUnlocked = newUnlocked.filter((a) => !prevUnlocked.has(a.id));
+    const justUnlocked = getUnlockedAchievements(discoveries.length, allBuildings.length, cats)
+      .filter((a) => !prevUnlocked.has(a.id));
 
     if (justUnlocked.length === 0) return;
     setNewAchievements(justUnlocked.map((a) => a.name));
 
-    // Show achievement popup after 0.8s with confetti
     setTimeout(async () => {
       setShowAchievementToast(true);
       const confetti = (await import('canvas-confetti')).default;
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 }, colors: ['#F5A623', '#0F5F92', '#ffffff', '#FFD700'] });
-      setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 60, colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 300);
+      setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 60,  colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 300);
       setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 120, colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 450);
     }, 800);
   }, [id, searchParams]);
@@ -158,10 +151,7 @@ export default function BudynekPage() {
         <div className="text-6xl">🔍</div>
         <h2 className="text-xl font-extrabold text-ocean-900">Nie znaleziono miejsca</h2>
         <p className="text-gray-400 text-sm">Ten kod QR nie jest jeszcze zarejestrowany w grze lub budynek został usunięty.</p>
-        <button
-          onClick={() => router.push('/')}
-          className="bg-ocean-500 text-white px-6 py-3 rounded-2xl font-bold mt-2"
-        >
+        <button onClick={() => router.push('/')} className="bg-ocean-500 text-white px-6 py-3 rounded-2xl font-bold mt-2">
           Wróć do mapy
         </button>
       </div>
@@ -170,8 +160,73 @@ export default function BudynekPage() {
 
   if (!building) return null;
 
-  const cat = CATEGORY_LABELS[building.category] ?? { label: building.category, color: 'bg-gray-100 text-gray-600' };
+  // ── LOCKED VIEW ─────────────────────────────────────────────────────────────
+  if (!discovered) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        {/* Back button */}
+        <div className="fixed top-4 left-4 z-30">
+          <button onClick={() => router.back()} className="bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-md">
+            <ArrowLeft size={20} className="text-ocean-700" />
+          </button>
+        </div>
 
+        {/* Blurred / grayscale hero */}
+        <div className="relative h-64 overflow-hidden bg-gray-200">
+          {(building.outlineImageUrl ?? building.imageUrl) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={(building.outlineImageUrl ?? building.imageUrl) ?? ''}
+              alt=""
+              className="w-full h-full object-cover grayscale blur-sm scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-100">
+              <Lock size={48} className="text-gray-300" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <Lock size={52} className="text-white/90 drop-shadow-lg" />
+          </div>
+          <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white to-transparent" />
+        </div>
+
+        {/* Content */}
+        <div className="px-4 -mt-6 relative z-10 flex-1 flex flex-col">
+          <span className={clsx('text-xs font-semibold px-2.5 py-1 rounded-full', CATEGORY_LABELS[building.category]?.color ?? 'bg-gray-100 text-gray-600')}>
+            {CATEGORY_LABELS[building.category]?.label ?? building.category}
+          </span>
+          <h1 className="text-2xl font-extrabold text-ocean-900 mt-2 leading-tight">???</h1>
+          <p className="text-gray-400 text-sm mt-1">Lokalizacja nieznana</p>
+
+          <div className="bg-ocean-50 border border-ocean-100 rounded-3xl p-5 mt-4 text-center flex flex-col items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-ocean-100 flex items-center justify-center">
+              <QrCode size={28} className="text-ocean-500" />
+            </div>
+            <p className="font-bold text-ocean-900">To miejsce jest jeszcze nieodkryte</p>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Znajdź to miejsce w Karwi i zeskanuj kod QR, żeby odblokować pełne informacje.
+            </p>
+            <button
+              onClick={() => router.push('/skanuj')}
+              className="mt-1 bg-ocean-500 text-white px-6 py-3 rounded-2xl font-bold text-sm w-full"
+            >
+              Skanuj kod QR
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              className="text-ocean-400 text-sm font-semibold"
+            >
+              Wróć do mapy
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── DISCOVERED VIEW ──────────────────────────────────────────────────────────
+  const cat = CATEGORY_LABELS[building.category] ?? { label: building.category, color: 'bg-gray-100 text-gray-600' };
   const mapBuildings: MapBuilding[] = [
     { id: building.id, name: building.name, lat: building.lat, lng: building.lng, discovered: true, isActive: true },
     ...nearby.map((n) => ({ id: n.id, name: n.name, lat: n.lat, lng: n.lng, discovered: false })),
@@ -181,10 +236,7 @@ export default function BudynekPage() {
     <div className="min-h-screen">
       {/* Back button */}
       <div className="fixed top-4 left-4 z-30">
-        <button
-          onClick={() => router.back()}
-          className="bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-md"
-        >
+        <button onClick={() => router.back()} className="bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-md">
           <ArrowLeft size={20} className="text-ocean-700" />
         </button>
       </div>
@@ -193,35 +245,21 @@ export default function BudynekPage() {
       <div className="relative h-64 bg-gradient-to-br from-ocean-300 to-ocean-600 overflow-hidden">
         {building.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={building.imageUrl}
-            alt={building.name}
-            className="w-full h-full object-cover"
-          />
+          <img src={building.imageUrl} alt={building.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-7xl">🏛️</div>
         )}
-
-        {/* Discovered badge */}
-        {discovered && (
-          <div className="absolute top-4 right-4 bg-ocean-500 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
-            <Check size={12} strokeWidth={3} />
-            Odkryto!
-          </div>
-        )}
-
-        {/* Gradient overlay */}
+        <div className="absolute top-4 right-4 bg-ocean-500 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
+          <Check size={12} strokeWidth={3} />
+          Odkryto!
+        </div>
         <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white to-transparent" />
       </div>
 
       {/* Content */}
       <div className="px-4 -mt-6 relative z-10">
-        {/* Category + name */}
-        <span className={clsx('text-xs font-semibold px-2.5 py-1 rounded-full', cat.color)}>
-          {cat.label}
-        </span>
+        <span className={clsx('text-xs font-semibold px-2.5 py-1 rounded-full', cat.color)}>{cat.label}</span>
         <h1 className="text-2xl font-extrabold text-ocean-900 mt-2 leading-tight">{building.name}</h1>
-
         {building.address && (
           <p className="flex items-center gap-1.5 text-gray-400 text-sm mt-1">
             <MapPin size={14} />
@@ -229,46 +267,28 @@ export default function BudynekPage() {
           </p>
         )}
 
-        {/* Description */}
         <div className="bg-white rounded-3xl p-5 mt-4 shadow-card">
           <p className="text-gray-600 text-sm leading-relaxed">{building.description}</p>
         </div>
 
-        {/* Gallery */}
         {building.images.length > 0 && (
           <div className="mt-4">
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
               {building.images.map((img) => (
-                <div
-                  key={img.id}
-                  className="shrink-0 w-64 h-44 rounded-2xl overflow-hidden shadow-card snap-start"
-                >
+                <div key={img.id} className="shrink-0 w-64 h-44 rounded-2xl overflow-hidden shadow-card snap-start">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.url}
-                    alt={building.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={img.url} alt={building.name} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Map */}
         <div className="mt-4 rounded-3xl overflow-hidden shadow-card">
-          <MapComponent
-            buildings={mapBuildings}
-            center={[building.lat, building.lng]}
-            zoom={15}
-            height="180px"
-          />
+          <MapComponent buildings={mapBuildings} center={[building.lat, building.lng]} zoom={16} height="180px" />
         </div>
-        <p className="text-xs text-gray-400 text-center mt-2">
-          ⚓ – aktualne miejsce · · · najbliższe budynki
-        </p>
+        <p className="text-xs text-gray-400 text-center mt-2">⚓ – aktualne miejsce · · · najbliższe budynki</p>
 
-        {/* Nearby buildings */}
         {nearby.length > 0 && (
           <div className="mt-5">
             <h2 className="text-xs font-bold uppercase tracking-widest text-ocean-500 mb-3 flex items-center gap-2">
@@ -282,17 +302,15 @@ export default function BudynekPage() {
                     <div className="w-12 h-12 rounded-xl overflow-hidden bg-ocean-100 shrink-0">
                       {n.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={n.imageUrl} alt={n.name} className="w-full h-full object-cover" />
+                        <img src={n.imageUrl} alt={n.name} className="w-full h-full object-cover grayscale" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xl">🏠</div>
+                        <div className="w-full h-full flex items-center justify-center"><Lock size={18} className="text-gray-300" /></div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-ocean-900 text-sm truncate">{n.name}</p>
+                      <p className="font-semibold text-ocean-900 text-sm truncate">???</p>
                       <p className="text-gray-400 text-xs mt-0.5">
-                        {n.distanceKm < 1
-                          ? `${Math.round(n.distanceKm * 1000)} m`
-                          : `${n.distanceKm.toFixed(1)} km`} stąd
+                        {n.distanceKm < 1 ? `${Math.round(n.distanceKm * 1000)} m` : `${n.distanceKm.toFixed(1)} km`} stąd
                       </p>
                     </div>
                     <span className="text-ocean-300">›</span>
@@ -317,20 +335,16 @@ export default function BudynekPage() {
         </div>
       )}
 
-      {/* Achievement popup – big celebratory card, no overlay */}
+      {/* Achievement popup */}
       {showAchievementToast && (
         <div className="fixed inset-x-6 top-1/2 -translate-y-1/2 z-50 animate-in zoom-in-90 slide-in-from-bottom-8 duration-300">
           <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden">
-            {/* Gold header band */}
             <div className="bg-gradient-to-r from-amber-400 to-yellow-300 px-6 pt-7 pb-5 text-center">
               <div className="text-7xl leading-none mb-2">🏆</div>
               <p className="text-amber-900 font-extrabold text-xs uppercase tracking-widest">Nowa odznaka odblokowana!</p>
             </div>
-            {/* Content */}
             <div className="px-6 py-5 text-center">
-              <p className="text-ocean-900 font-extrabold text-xl leading-tight">
-                {newAchievements.join(' & ')}
-              </p>
+              <p className="text-ocean-900 font-extrabold text-xl leading-tight">{newAchievements.join(' & ')}</p>
               <p className="text-gray-400 text-sm mt-2">Świetna robota! Kontynuuj eksplorację Karwi.</p>
               <button
                 onClick={() => setShowAchievementToast(false)}
