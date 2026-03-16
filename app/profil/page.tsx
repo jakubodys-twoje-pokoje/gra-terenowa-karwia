@@ -71,10 +71,11 @@ function GuestView({ onRegister }: { onRegister: () => void }) {
       </button>
 
       {/* Twoje Pokoje branding */}
-      <div className="flex justify-center mt-6 mb-2">
-        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-40 hover:opacity-60 transition-opacity">
+      <div className="mt-8 mb-4 flex flex-col items-center gap-2">
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Partner projektu</p>
+        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-50 hover:opacity-80 transition-opacity">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/twoje-pokoje-logo.webp" alt="Twoje Pokoje" className="h-6 w-auto" />
+          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-7 w-auto" />
         </a>
       </div>
 
@@ -166,6 +167,7 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
   const [form, setForm] = useState({ nickname: user.nickname ?? '', city: user.city ?? '' });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl ?? null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null); // null = not uploading
+  const [uploadError, setUploadError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -183,6 +185,7 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploadError('');
     const preview = URL.createObjectURL(file);
     setAvatarUrl(preview);
     setUploadProgress(0);
@@ -198,14 +201,31 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
     xhr.onload = async () => {
       URL.revokeObjectURL(preview);
       if (xhr.status >= 200 && xhr.status < 300) {
-        const { url } = JSON.parse(xhr.responseText);
-        setAvatarUrl(`${url}?t=${Date.now()}`);
-        await fetch('/api/profil', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ avatarUrl: url, ...form }),
-        });
+        try {
+          const { url, error: apiErr } = JSON.parse(xhr.responseText);
+          if (apiErr || !url) {
+            setUploadError(apiErr ?? 'Błąd serwera przy uploading');
+            setAvatarUrl(user.avatarUrl ?? null);
+          } else {
+            setAvatarUrl(`${url}?t=${Date.now()}`);
+            const saveRes = await fetch('/api/profil', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ avatarUrl: url, nickname: form.nickname, city: form.city }),
+            });
+            if (!saveRes.ok) {
+              const d = await saveRes.json().catch(() => ({}));
+              setUploadError(d.error ?? `Błąd zapisu profilu (${saveRes.status})`);
+            }
+          }
+        } catch {
+          setUploadError('Nieprawidłowa odpowiedź serwera');
+          setAvatarUrl(user.avatarUrl ?? null);
+        }
       } else {
+        let msg = `Błąd uploadu (${xhr.status})`;
+        try { const d = JSON.parse(xhr.responseText); msg = d.error ?? msg; } catch { /* ignore */ }
+        setUploadError(msg);
         setAvatarUrl(user.avatarUrl ?? null);
       }
       setUploadProgress(null);
@@ -214,6 +234,7 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
       URL.revokeObjectURL(preview);
       setAvatarUrl(user.avatarUrl ?? null);
       setUploadProgress(null);
+      setUploadError('Błąd sieci — sprawdź połączenie');
     };
     xhr.open('POST', '/api/upload/avatar');
     xhr.send(fd);
@@ -284,6 +305,11 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
           </div>
         )}
 
+        {/* Upload error */}
+        {uploadError && (
+          <p className="text-red-500 text-xs text-center bg-red-50 px-3 py-2 rounded-xl max-w-[220px]">{uploadError}</p>
+        )}
+
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
       </div>
 
@@ -313,10 +339,11 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
       </form>
 
       {/* Twoje Pokoje branding */}
-      <div className="flex justify-center mt-6 mb-2">
-        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-40 hover:opacity-60 transition-opacity">
+      <div className="mt-8 mb-4 flex flex-col items-center gap-2">
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Partner projektu</p>
+        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-50 hover:opacity-80 transition-opacity">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/twoje-pokoje-logo.webp" alt="Twoje Pokoje" className="h-6 w-auto" />
+          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-7 w-auto" />
         </a>
       </div>
     </div>

@@ -44,9 +44,16 @@
   font-size: 13px;
 }
 
-/* Rotation lock overlay (disabled on admin) */
-@media screen and (orientation: landscape) {
-  :not([data-admin]) .portrait-guard {
+/* Mobile landscape — obróć telefon (tylko na telefonach, max-height odróżnia od laptopa) */
+@media screen and (orientation: landscape) and (max-height: 600px) {
+  .mobile-landscape-guard {
+    display: flex !important;
+  }
+}
+
+/* Desktop — strona przeznaczona na telefon */
+@media screen and (min-width: 1024px) {
+  .desktop-guard {
     display: flex !important;
   }
 }

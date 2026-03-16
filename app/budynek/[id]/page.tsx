@@ -380,10 +380,28 @@ export default function BudynekPage() {
             </div>
             <div className="px-6 py-5 text-center">
               <p className="text-ocean-900 font-extrabold text-xl leading-tight">{newAchievements.join(' & ')}</p>
-              <p className="text-gray-400 text-sm mt-2">Świetna robota! Kontynuuj eksplorację Karwi.</p>
+              <p className="text-gray-400 text-sm mt-2">Świetna robota! Kontynuuj eksplorację Karwii.</p>
+              <button
+                onClick={() => {
+                  const text = `Zdobyłem odznakę „${newAchievements.join(' & ')}" w grze terenowej Karwia! 🏆`;
+                  const url = 'https://odkrywca.karwia.pl';
+                  if (navigator.share) {
+                    navigator.share({ title: text, text, url }).catch(() => {});
+                  } else {
+                    window.open(
+                      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`,
+                      '_blank', 'noopener,noreferrer,width=600,height=500',
+                    );
+                  }
+                }}
+                className="mt-5 w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"
+              >
+                <Share2 size={15} />
+                Udostępnij osiągnięcie
+              </button>
               <button
                 onClick={() => setShowAchievementToast(false)}
-                className="mt-5 w-full bg-ocean-500 text-white py-3 rounded-2xl font-bold text-sm hover:bg-ocean-600 transition"
+                className="mt-2.5 w-full bg-ocean-500 text-white py-3 rounded-2xl font-bold text-sm hover:bg-ocean-600 transition"
               >
                 Hurra! 🎉
               </button>
