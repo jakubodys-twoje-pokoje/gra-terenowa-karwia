@@ -16,6 +16,7 @@ interface Props {
   name: string;
   description: string;
   imageUrl?: string | null;
+  outlineImageUrl?: string | null;
   category: string;
   discovered?: boolean;
   discoveredAt?: string;
@@ -23,9 +24,10 @@ interface Props {
 }
 
 export default function BuildingCard({
-  id, name, description, imageUrl, category, discovered, discoveredAt, showLink = true,
+  id, name, description, imageUrl, outlineImageUrl, category, discovered, discoveredAt, showLink = true,
 }: Props) {
   const cat = CATEGORY_LABELS[category] ?? { label: category, color: 'bg-gray-100 text-gray-600' };
+  const undiscoveredSrc = outlineImageUrl ?? imageUrl;
 
   const card = (
     <div
@@ -43,6 +45,15 @@ export default function BuildingCard({
           ) : (
             <div className="w-full h-full flex items-center justify-center text-5xl">🏠</div>
           )
+        ) : undiscoveredSrc ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={undiscoveredSrc} alt="" className="w-full h-full object-cover grayscale" />
+            <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center gap-1">
+              <Lock size={28} className="text-white/90" />
+              <span className="text-xs text-white/80 font-semibold">Nieodkryte</span>
+            </div>
+          </>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-100">
             <Lock size={32} className="text-gray-400" />

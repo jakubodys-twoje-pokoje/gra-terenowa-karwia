@@ -91,19 +91,10 @@ export default function MapPage() {
       <MapComponent
         buildings={mapBuildings}
         height="100%"
-        zoom={15}
+        zoom={17}
         showUserLocation
         onBuildingClick={handleBuildingClick}
       />
-
-      {/* Floating scan button */}
-      <button
-        onClick={() => router.push('/skanuj')}
-        className="absolute bottom-4 right-4 z-[500] w-14 h-14 bg-ocean-500 text-white rounded-full shadow-lg shadow-ocean-500/40 flex items-center justify-center active:bg-ocean-600 transition-colors"
-        aria-label="Skanuj kod QR"
-      >
-        <QrCode size={24} />
-      </button>
 
       {/* Stats pill */}
       {buildings.length > 0 && (

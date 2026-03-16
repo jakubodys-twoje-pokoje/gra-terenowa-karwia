@@ -9,6 +9,7 @@ interface Building {
   name: string;
   description: string;
   imageUrl: string | null;
+  outlineImageUrl: string | null;
   category: string;
 }
 
@@ -122,6 +123,7 @@ export default function BazaPage() {
                 name={b.name}
                 description={b.description}
                 imageUrl={b.imageUrl}
+                outlineImageUrl={b.outlineImageUrl}
                 category={b.category}
                 discovered={discoveredIds.has(b.id)}
                 showLink
