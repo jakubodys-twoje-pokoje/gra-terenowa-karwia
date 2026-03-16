@@ -55,6 +55,12 @@ model UserProfile {
   updatedAt     DateTime @updatedAt
 }
 
+model PageContent {
+  key       String   @id
+  html      String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
 model EmailVerificationToken {
   id          Int      @id @default(autoincrement())
   userId      String

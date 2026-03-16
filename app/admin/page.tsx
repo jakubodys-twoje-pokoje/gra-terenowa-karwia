@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save } from 'lucide-react';
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
@@ -40,7 +40,11 @@ const EMPTY_FORM = {
 export default function AdminPage() {
   const [password, setPassword]     = useState('');
   const [authed, setAuthed]         = useState(false);
-  const [activeTab, setActiveTab]   = useState<'budynki' | 'uzytkownicy'>('budynki');
+  const [activeTab, setActiveTab]   = useState<'budynki' | 'uzytkownicy' | 'tresci'>('budynki');
+  const [contentReg, setContentReg]   = useState('');
+  const [contentPol, setContentPol]   = useState('');
+  const [contentSaving, setContentSaving] = useState<string | null>(null);
+  const [contentSaved, setContentSaved]   = useState<string | null>(null);
   const [buildings, setBuildings]   = useState<Building[]>([]);
   const [users, setUsers]           = useState<UserEntry[]>([]);
   const [guestCount, setGuestCount] = useState(0);
@@ -66,10 +70,33 @@ export default function AdminPage() {
     if (res.ok) { const d = await res.json(); setUsers(d.users); setGuestCount(d.guestCount); }
   }, []);
 
+  const loadContent = useCallback(async () => {
+    const [r, p] = await Promise.all([
+      fetch('/api/content?key=regulamin').then((x) => x.json()),
+      fetch('/api/content?key=polityka-prywatnosci').then((x) => x.json()),
+    ]);
+    setContentReg(r.html ?? '');
+    setContentPol(p.html ?? '');
+  }, []);
+
+  const saveContent = async (key: string, html: string) => {
+    setContentSaving(key);
+    const res = await fetch(`/api/content?key=${key}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+      body: JSON.stringify({ html }),
+    });
+    if (res.ok) {
+      setContentSaved(key);
+      setTimeout(() => setContentSaved(null), 3000);
+    }
+    setContentSaving(null);
+  };
+
   useEffect(() => {
     const stored = sessionStorage.getItem('admin_pass');
-    if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); }
-  }, [loadBuildings, loadUsers]);
+    if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); loadContent(); }
+  }, [loadBuildings, loadUsers, loadContent]);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +104,7 @@ export default function AdminPage() {
     setAuthed(true);
     loadBuildings(password);
     loadUsers(password);
+    loadContent();
   };
 
   const handleMapClick = (lat: number, lng: number) => {
@@ -166,6 +194,10 @@ export default function AdminPage() {
               className={clsx('flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all', activeTab === 'uzytkownicy' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
               <Users size={13} /> Użytkownicy
             </button>
+            <button onClick={() => setActiveTab('tresci')}
+              className={clsx('flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all', activeTab === 'tresci' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
+              <FileText size={13} /> Treści
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -189,6 +221,9 @@ export default function AdminPage() {
         </button>
         <button onClick={() => setActiveTab('uzytkownicy')} className={clsx('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all', activeTab === 'uzytkownicy' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400')}>
           <Users size={13} /> Użytkownicy
+        </button>
+        <button onClick={() => setActiveTab('tresci')} className={clsx('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all', activeTab === 'tresci' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400')}>
+          <FileText size={13} /> Treści
         </button>
       </div>
 
@@ -348,6 +383,55 @@ export default function AdminPage() {
                   </div>
                 ))}
                 {users.length === 0 && <div className="text-center py-10 text-gray-400 text-sm">Brak zarejestrowanych użytkowników</div>}
+              </div>
+            </div>
+          )}
+
+          {/* ── TREŚCI ── */}
+          {activeTab === 'tresci' && (
+            <div className="px-4 py-4 space-y-6">
+              {/* Regulamin */}
+              <div className="bg-white rounded-2xl shadow-sm p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-ocean-900 text-sm flex items-center gap-2"><FileText size={15} className="text-ocean-400" /> Regulamin</h3>
+                  {contentSaved === 'regulamin' && <span className="text-green-600 text-xs flex items-center gap-1"><Check size={12} /> Zapisano</span>}
+                </div>
+                <textarea
+                  value={contentReg}
+                  onChange={(e) => setContentReg(e.target.value)}
+                  rows={12}
+                  placeholder="Wklej tu treść regulaminu (HTML lub zwykły tekst)…"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ocean-400 resize-y"
+                />
+                <button
+                  onClick={() => saveContent('regulamin', contentReg)}
+                  disabled={contentSaving === 'regulamin'}
+                  className="mt-2 flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-xs font-bold disabled:opacity-60"
+                >
+                  <Save size={12} /> {contentSaving === 'regulamin' ? 'Zapisuję…' : 'Zapisz regulamin'}
+                </button>
+              </div>
+
+              {/* Polityka prywatności */}
+              <div className="bg-white rounded-2xl shadow-sm p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-ocean-900 text-sm flex items-center gap-2"><FileText size={15} className="text-ocean-400" /> Polityka prywatności</h3>
+                  {contentSaved === 'polityka-prywatnosci' && <span className="text-green-600 text-xs flex items-center gap-1"><Check size={12} /> Zapisano</span>}
+                </div>
+                <textarea
+                  value={contentPol}
+                  onChange={(e) => setContentPol(e.target.value)}
+                  rows={12}
+                  placeholder="Wklej tu treść polityki prywatności (HTML lub zwykły tekst)…"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ocean-400 resize-y"
+                />
+                <button
+                  onClick={() => saveContent('polityka-prywatnosci', contentPol)}
+                  disabled={contentSaving === 'polityka-prywatnosci'}
+                  className="mt-2 flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-xs font-bold disabled:opacity-60"
+                >
+                  <Save size={12} /> {contentSaving === 'polityka-prywatnosci' ? 'Zapisuję…' : 'Zapisz politykę'}
+                </button>
               </div>
             </div>
           )}

@@ -9,8 +9,9 @@ import { fetchMe } from '@/lib/useAuth';
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [form, setForm] = useState({ nickname: '', email: '', password: '', city: '' });
+  const [form, setForm] = useState({ nickname: '', email: '', password: '', confirmPassword: '', city: '' });
   const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,6 +40,7 @@ function RegisterForm() {
     e.preventDefault();
     setError('');
     if (form.password.length < 6) { setError('Hasło musi mieć min. 6 znaków'); return; }
+    if (form.password !== form.confirmPassword) { setError('Hasła nie są identyczne'); return; }
     setLoading(true);
 
     const res = await fetch('/api/auth/register', {
@@ -109,6 +111,21 @@ function RegisterForm() {
             {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
+        <div className="relative">
+          <input
+            type={showConfirmPass ? 'text' : 'password'}
+            placeholder="Powtórz hasło"
+            value={form.confirmPassword}
+            onChange={(e) => setForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+            autoComplete="new-password"
+            required
+            className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10"
+          />
+          <button type="button" onClick={() => setShowConfirmPass((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+            {showConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
         <input
           type="text"
           placeholder="Miejscowość (opcjonalnie)"
@@ -132,6 +149,13 @@ function RegisterForm() {
       <p className="text-center text-sm text-gray-400 mt-6">
         Masz już konto?{' '}
         <Link href="/login" className="text-ocean-500 font-semibold">Zaloguj się</Link>
+      </p>
+
+      <p className="text-center text-[11px] text-gray-300 mt-6 leading-relaxed">
+        Rejestrując się, akceptujesz{' '}
+        <Link href="/regulamin" className="text-gray-400 underline">Regulamin</Link>
+        {' '}i{' '}
+        <Link href="/polityka-prywatnosci" className="text-gray-400 underline">Politykę prywatności</Link>.
       </p>
     </div>
   );

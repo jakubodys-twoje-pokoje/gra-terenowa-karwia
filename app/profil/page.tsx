@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { User, Save, Check, Camera, Loader2, LogOut, Lock, Mail, RefreshCw } from 'lucide-react';
+import { User, Save, Check, Camera, Loader2, LogOut, Lock, Mail, RefreshCw, Key, Trash2, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth, logout, fetchMe } from '@/lib/useAuth';
 
 // Generate a stable display number from UUID
@@ -164,6 +165,7 @@ function UnverifiedView({ email }: { email: string }) {
 
 // ── VERIFIED VIEW ─────────────────────────────────────────────────────────────
 function VerifiedView({ user, onLogout }: { user: { email: string; nickname: string | null; city: string | null; avatarUrl: string | null }, onLogout: () => void }) {
+  const router = useRouter();
   const [form, setForm] = useState({ nickname: user.nickname ?? '', city: user.city ?? '' });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl ?? null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null); // null = not uploading
@@ -171,6 +173,23 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Change password
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [showCurPw, setShowCurPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfPw, setShowConfPw] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwError, setPwError] = useState('');
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwSaving, setPwSaving] = useState(false);
+
+  // Delete account
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeletePw, setShowDeletePw] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const uploadingAvatar = uploadProgress !== null;
 
@@ -260,6 +279,48 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
     setTimeout(() => setSaved(false), 2500);
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError('');
+    if (pwForm.next.length < 6) { setPwError('Nowe hasło musi mieć min. 6 znaków'); return; }
+    if (pwForm.next !== pwForm.confirm) { setPwError('Nowe hasła nie są identyczne'); return; }
+    setPwSaving(true);
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.next }),
+    });
+    if (res.ok) {
+      setPwSaved(true);
+      setPwForm({ current: '', next: '', confirm: '' });
+      setShowChangePw(false);
+      setTimeout(() => setPwSaved(false), 3000);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setPwError(d.error ?? 'Błąd zmiany hasła');
+    }
+    setPwSaving(false);
+  };
+
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDeleteError('');
+    setDeleting(true);
+    const res = await fetch('/api/auth/account', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: deletePassword }),
+    });
+    if (res.ok) {
+      localStorage.removeItem('karwia_user_id');
+      router.push('/');
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setDeleteError(d.error ?? 'Błąd usuwania konta');
+    }
+    setDeleting(false);
+  };
+
   return (
     <div className="px-4 pt-6">
       <div className="flex items-center justify-between mb-6">
@@ -344,6 +405,112 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
         </button>
       </form>
 
+      {/* ── Zmiana hasła ──────────────────────────────────────────────────── */}
+      <div className="mt-6 border border-gray-100 rounded-3xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => { setShowChangePw((v) => !v); setPwError(''); }}
+          className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-semibold text-gray-700"
+        >
+          <span className="flex items-center gap-2"><Key size={15} className="text-ocean-400" /> Zmień hasło</span>
+          {pwSaved && <span className="text-green-600 text-xs flex items-center gap-1"><Check size={12} /> Zmieniono!</span>}
+        </button>
+        {showChangePw && (
+          <form onSubmit={handleChangePassword} className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+            <div className="relative">
+              <input type={showCurPw ? 'text' : 'password'} placeholder="Aktualne hasło"
+                value={pwForm.current} onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))}
+                required autoComplete="current-password"
+                className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10" />
+              <button type="button" onClick={() => setShowCurPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                {showCurPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <div className="relative">
+              <input type={showNewPw ? 'text' : 'password'} placeholder="Nowe hasło (min. 6 znaków)"
+                value={pwForm.next} onChange={(e) => setPwForm((f) => ({ ...f, next: e.target.value }))}
+                required autoComplete="new-password"
+                className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10" />
+              <button type="button" onClick={() => setShowNewPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <div className="relative">
+              <input type={showConfPw ? 'text' : 'password'} placeholder="Powtórz nowe hasło"
+                value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
+                required autoComplete="new-password"
+                className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10" />
+              <button type="button" onClick={() => setShowConfPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                {showConfPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {pwError && <p className="text-red-500 text-xs px-1">{pwError}</p>}
+            <div className="flex gap-2 pt-1">
+              <button type="submit" disabled={pwSaving}
+                className="flex-1 bg-ocean-500 text-white py-2.5 rounded-2xl font-bold text-sm disabled:opacity-60">
+                {pwSaving ? 'Zapisuję…' : 'Zmień hasło'}
+              </button>
+              <button type="button" onClick={() => setShowChangePw(false)}
+                className="px-4 py-2.5 rounded-2xl text-gray-400 text-sm border border-gray-200">
+                Anuluj
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* ── Usuń konto ────────────────────────────────────────────────────── */}
+      <div className="mt-3 mb-2">
+        <button
+          type="button"
+          onClick={() => { setShowDeleteDialog(true); setDeleteError(''); setDeletePassword(''); }}
+          className="w-full flex items-center justify-center gap-2 text-red-400 border border-red-100 bg-red-50 py-3 rounded-2xl text-sm font-semibold"
+        >
+          <Trash2 size={15} /> Usuń konto
+        </button>
+      </div>
+
+      {/* Delete account dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 z-[900] flex items-end justify-center p-4 bg-black/50"
+          onClick={() => setShowDeleteDialog(false)}>
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} className="text-red-500" />
+              </div>
+              <div>
+                <h2 className="font-extrabold text-gray-900 text-base">Usuń konto</h2>
+                <p className="text-gray-400 text-xs">Tej operacji nie można cofnąć</p>
+              </div>
+            </div>
+            <p className="text-gray-500 text-sm mb-4">
+              Zostaną usunięte wszystkie Twoje dane: profil, odkrycia i avatar. Aby potwierdzić, wpisz swoje hasło.
+            </p>
+            <form onSubmit={handleDeleteAccount} className="space-y-3">
+              <div className="relative">
+                <input type={showDeletePw ? 'text' : 'password'} placeholder="Twoje hasło"
+                  value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)}
+                  required autoComplete="current-password"
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 pr-10" />
+                <button type="button" onClick={() => setShowDeletePw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showDeletePw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              {deleteError && <p className="text-red-500 text-xs px-1">{deleteError}</p>}
+              <button type="submit" disabled={deleting}
+                className="w-full bg-red-500 text-white py-3 rounded-2xl font-bold text-sm disabled:opacity-60">
+                {deleting ? 'Usuwam…' : 'Tak, usuń moje konto'}
+              </button>
+              <button type="button" onClick={() => setShowDeleteDialog(false)}
+                className="w-full py-2.5 rounded-2xl text-gray-400 text-sm">
+                Anuluj
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Twoje Pokoje branding */}
       <div className="mt-8 mb-4 flex flex-col items-center gap-2">
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Partner projektu</p>
@@ -352,6 +519,12 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
           <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-10 w-auto" />
         </a>
       </div>
+
+      <p className="text-center text-[11px] text-gray-300 mb-6 leading-relaxed">
+        <Link href="/regulamin" className="text-gray-400 underline">Regulamin</Link>
+        {' · '}
+        <Link href="/polityka-prywatnosci" className="text-gray-400 underline">Polityka prywatności</Link>
+      </p>
     </div>
   );
 }
