@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, MapPin, Navigation, Check, Lock, QrCode } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Check, Lock, QrCode, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import clsx from 'clsx';
 import type { MapBuilding } from '@/components/MapComponent';
@@ -267,10 +267,12 @@ export default function BudynekPage() {
           </p>
         )}
 
+        {/* Description */}
         <div className="bg-white rounded-3xl p-5 mt-4 shadow-card">
           <p className="text-gray-600 text-sm leading-relaxed">{building.description}</p>
         </div>
 
+        {/* Gallery */}
         {building.images.length > 0 && (
           <div className="mt-4">
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
@@ -284,16 +286,32 @@ export default function BudynekPage() {
           </div>
         )}
 
-        <div className="mt-4 rounded-3xl overflow-hidden shadow-card">
-          <MapComponent buildings={mapBuildings} center={[building.lat, building.lng]} zoom={16} height="180px" />
-        </div>
-        <p className="text-xs text-gray-400 text-center mt-2">⚓ – aktualne miejsce · · · najbliższe budynki</p>
+        {/* Share on Facebook */}
+        <button
+          onClick={() => {
+            const url = `${window.location.origin}/budynek/${building.id}`;
+            const text = `Odkryłem ${building.name} w Karwi! ⚓`;
+            if (navigator.share) {
+              navigator.share({ title: text, url });
+            } else {
+              window.open(
+                `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`,
+                '_blank', 'width=600,height=400',
+              );
+            }
+          }}
+          className="mt-4 w-full flex items-center justify-center gap-2 bg-[#1877F2] hover:bg-[#166FE5] text-white py-3 rounded-2xl font-bold text-sm transition"
+        >
+          <Share2 size={15} />
+          Udostępnij na Facebooku
+        </button>
 
+        {/* Nearest buildings — ABOVE the map */}
         {nearby.length > 0 && (
-          <div className="mt-5">
+          <div className="mt-6">
             <h2 className="text-xs font-bold uppercase tracking-widest text-ocean-500 mb-3 flex items-center gap-2">
               <Navigation size={14} />
-              Najbliższe budynki
+              Najbliższe miejsca
             </h2>
             <div className="space-y-3">
               {nearby.map((n) => (
@@ -320,6 +338,23 @@ export default function BudynekPage() {
             </div>
           </div>
         )}
+
+        {/* Static map — bottom, bigger, zoom out to show the sea */}
+        <div className="mt-6">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-ocean-500 mb-3 flex items-center gap-2">
+            <MapPin size={14} />
+            Lokalizacja
+          </h2>
+          <div className="rounded-3xl overflow-hidden shadow-card">
+            <MapComponent
+              buildings={mapBuildings}
+              center={[building.lat, building.lng]}
+              zoom={14}
+              height="240px"
+              interactive={false}
+            />
+          </div>
+        </div>
 
         <div className="pb-8" />
       </div>

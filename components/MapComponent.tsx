@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useEffect, useRef } from 'react';
 
 export interface MapBuilding {
   id: number;
@@ -26,36 +26,34 @@ interface Props {
   onMapClick?: (lat: number, lng: number) => void;
   height?: string;
   showUserLocation?: boolean;
+  /** When false, disables all user interactions (static thumbnail mode) */
+  interactive?: boolean;
+  /** User's avatar URL — shown on the location dot; null/undefined = blue placeholder */
+  userAvatarUrl?: string | null;
+  /** Called once the Leaflet map is ready — gives caller an imperative handle */
+  onMapReady?: (handle: MapHandle) => void;
 }
 
 const KARWIA_CENTER: [number, number] = [54.828701688893595, 18.210140614060844];
+const LOGO_URL = '/icons/icon-192.png';
 
-// Smoother, gentler scale curve — minimum 0.55 so pins never get unreadable
 function getScale(zoom: number): number {
   return Math.max(0.55, Math.min(2.2, Math.pow(1.38, zoom - 17)));
 }
 
 // ── Pin builders ─────────────────────────────────────────────────────────────
-// All pins use:
-//  • A circular photo / icon area
-//  • A white outer ring for contrast against any map tile
-//  • An SVG rounded teardrop pointer (no more CSS border trick)
-//  • Drop shadow via filter
 
 function dropShadow(opacity = 0.4) {
   return `drop-shadow(0 3px 8px rgba(0,0,0,${opacity}))`;
 }
 
-function photoCircle(src: string, sz: number, ring: string, ringWidth: number, grayscale = false) {
-  const rw = ringWidth;
+function photoCircle(src: string, sz: number, ring: string, ringW: number, grayscale = false) {
   return `
     <div style="
-      position:relative;
       width:${sz}px;height:${sz}px;border-radius:50%;overflow:hidden;
-      outline:${rw}px solid white;
-      border:${rw}px solid ${ring};
-      box-sizing:border-box;
-      background:#ccc;
+      outline:${ringW}px solid white;
+      border:${ringW}px solid ${ring};
+      box-sizing:border-box;background:#ccc;
       ${grayscale ? 'filter:grayscale(1) brightness(0.9);' : ''}
     ">
       <img src="${src}" style="width:100%;height:100%;object-fit:cover;display:block;" />
@@ -63,7 +61,6 @@ function photoCircle(src: string, sz: number, ring: string, ringWidth: number, g
 }
 
 function svgPointer(color: string, w: number) {
-  // Smooth rounded teardrop pointer — an SVG arc curving to a point
   const hw = w / 2;
   return `<svg width="${w}" height="${Math.round(w * 0.65)}" viewBox="0 0 ${w} ${Math.round(w * 0.65)}" style="display:block;margin-top:-1px;overflow:visible">
     <path d="M0,0 Q${hw},${Math.round(w * 0.65)} ${w},0" fill="${color}" />
@@ -77,33 +74,29 @@ function makeIcon(L: any, b: MapBuilding, scale: number) {
   let iconAnchor: [number, number];
 
   if (b.isActive) {
-    // Gold ring, largest pin
-    const sz   = Math.round(50 * scale);
-    const tip  = Math.round(16 * scale);
+    const sz  = Math.round(50 * scale);
+    const tip = Math.round(16 * scale);
     const tipH = Math.round(10 * scale);
-    const src  = b.imageUrl;
-    const body = src
-      ? photoCircle(src, sz, '#F0A500', Math.max(2, Math.round(3 * scale)))
-      : `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#F0A500;
-           outline:${Math.max(2, Math.round(3 * scale))}px solid white;
-           display:flex;align-items:center;justify-content:center;font-size:${Math.round(22 * scale)}px;">⚓</div>`;
-    html = `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:${dropShadow(0.45)}">
-      ${body}
+    const rw  = Math.max(2, Math.round(3 * scale));
+    // Always show the Karwia logo (or building photo if available)
+    const src = b.imageUrl ?? LOGO_URL;
+    html = `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:${dropShadow(0.5)}">
+      ${photoCircle(src, sz, '#F0A500', rw)}
       ${svgPointer('#F0A500', tip)}
     </div>`;
     iconSize   = [sz + 6, sz + tipH + 4];
     iconAnchor = [Math.round((sz + 6) / 2), sz + tipH + 4];
 
   } else if (b.discovered) {
-    // Ocean-blue ring
-    const sz   = Math.round(44 * scale);
-    const tip  = Math.round(14 * scale);
+    const sz  = Math.round(44 * scale);
+    const tip = Math.round(14 * scale);
     const tipH = Math.round(9 * scale);
-    const src  = b.imageUrl;
+    const rw  = Math.max(2, Math.round(3 * scale));
+    const src = b.imageUrl;
     const body = src
-      ? photoCircle(src, sz, '#0F5F92', Math.max(2, Math.round(3 * scale)))
+      ? photoCircle(src, sz, '#0F5F92', rw)
       : `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#0F5F92;
-           outline:${Math.max(2, Math.round(3 * scale))}px solid white;
+           outline:${rw}px solid white;box-sizing:border-box;
            display:flex;align-items:center;justify-content:center;font-size:${Math.round(18 * scale)}px;color:white;font-weight:bold;">✓</div>`;
     html = `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:${dropShadow(0.35)}">
       ${body}
@@ -113,17 +106,15 @@ function makeIcon(L: any, b: MapBuilding, scale: number) {
     iconAnchor = [Math.round((sz + 6) / 2), sz + tipH + 4];
 
   } else {
-    // Undiscovered — greyscale outline image or "?" placeholder
-    const sz   = Math.round(38 * scale);
-    const tip  = Math.round(12 * scale);
+    const sz  = Math.round(38 * scale);
+    const tip = Math.round(12 * scale);
     const tipH = Math.round(8 * scale);
-    const src  = b.outlineImageUrl ?? b.imageUrl;
+    const rw  = Math.max(1, Math.round(2 * scale));
+    const src = b.outlineImageUrl ?? b.imageUrl;
     const body = src
-      ? photoCircle(src, sz, '#9CA3AF', Math.max(2, Math.round(2 * scale)), /* grayscale */ true)
+      ? photoCircle(src, sz, '#9CA3AF', rw, true)
       : `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#E5E7EB;
-           outline:${Math.max(2, Math.round(2 * scale))}px solid white;
-           border:${Math.max(2, Math.round(2 * scale))}px solid #9CA3AF;
-           box-sizing:border-box;
+           outline:${rw}px solid white;border:${rw}px solid #9CA3AF;box-sizing:border-box;
            display:flex;align-items:center;justify-content:center;font-size:${Math.round(15 * scale)}px;color:#9CA3AF;">?</div>`;
     html = `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:${dropShadow(0.2)};opacity:0.85">
       ${body}
@@ -138,35 +129,22 @@ function makeIcon(L: any, b: MapBuilding, scale: number) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-const MapComponent = forwardRef<MapHandle, Props>(function MapComponent(
-  {
-    buildings,
-    center = KARWIA_CENTER,
-    zoom = 17,
-    onBuildingClick,
-    onMapClick,
-    height = '400px',
-    showUserLocation = false,
-  },
-  ref,
-) {
+export default function MapComponent({
+  buildings,
+  center = KARWIA_CENTER,
+  zoom = 17,
+  onBuildingClick,
+  onMapClick,
+  height = '400px',
+  showUserLocation = false,
+  interactive = true,
+  userAvatarUrl,
+  onMapReady,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<import('leaflet').Map | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef   = useRef<{ marker: any; building: MapBuilding }[]>([]);
-
-  // Expose imperative API
-  useImperativeHandle(ref, () => ({
-    panTo(lat, lng, z) {
-      if (!mapRef.current) return;
-      mapRef.current.flyTo([lat, lng], z ?? mapRef.current.getZoom(), { duration: 0.8 });
-    },
-    openBuilding(id) {
-      const entry = markersRef.current.find((e) => e.building.id === id);
-      if (entry) entry.marker.openPopup?.();
-      if (onBuildingClick) onBuildingClick(id);
-    },
-  }));
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -181,7 +159,17 @@ const MapComponent = forwardRef<MapHandle, Props>(function MapComponent(
       });
 
       if (!containerRef.current) return;
-      const map = L.map(containerRef.current, { zoomControl: false }).setView(center, zoom);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapOptions: any = {
+        zoomControl: false,
+        dragging:        interactive,
+        scrollWheelZoom: interactive,
+        doubleClickZoom: interactive,
+        touchZoom:       interactive,
+        keyboard:        interactive,
+        tap:             interactive,
+      };
+      const map = L.map(containerRef.current, mapOptions).setView(center, zoom);
       mapRef.current = map;
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -194,14 +182,24 @@ const MapComponent = forwardRef<MapHandle, Props>(function MapComponent(
         map.on('click', (e) => onMapClick(e.latlng.lat, e.latlng.lng));
       }
 
-      // User GPS dot
+      // User GPS dot — photo avatar if available, else blue placeholder
       if (showUserLocation && navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const { latitude, longitude } = pos.coords;
+            const avatarHtml = userAvatarUrl
+              ? `<div style="width:28px;height:28px;border-radius:50%;overflow:hidden;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);background:#ddd">
+                   <img src="${userAvatarUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+                 </div>`
+              : `<div style="width:28px;height:28px;border-radius:50%;background:#4A90E2;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                     <circle cx="12" cy="7" r="4"/>
+                   </svg>
+                 </div>`;
             const userIcon = L.divIcon({
-              html: `<div style="width:18px;height:18px;border-radius:50%;background:#4A90E2;border:3px solid white;box-shadow:0 0 0 3px rgba(74,144,226,0.3)"></div>`,
-              iconSize: [18, 18], iconAnchor: [9, 9], className: '',
+              html: `<div style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3))">${avatarHtml}</div>`,
+              iconSize: [28, 28], iconAnchor: [14, 14], className: '',
             });
             L.marker([latitude, longitude], { icon: userIcon }).addTo(map);
             map.setView([latitude, longitude], map.getZoom());
@@ -233,13 +231,32 @@ const MapComponent = forwardRef<MapHandle, Props>(function MapComponent(
         markersRef.current.push({ marker, building: b });
       });
 
-      // Rescale all markers on zoom change
+      // Rescale markers on zoom change
       map.on('zoomend', () => {
         const scale = getScale(map.getZoom());
         markersRef.current.forEach(({ marker, building }) => {
           marker.setIcon(makeIcon(L, building, scale));
         });
       });
+
+      // Expose imperative handle via callback — works reliably through dynamic()
+      if (onMapReady) {
+        onMapReady({
+          panTo(lat, lng, z) {
+            map.flyTo([lat, lng], z ?? map.getZoom(), { duration: 0.9 });
+          },
+          openBuilding(id) {
+            const entry = markersRef.current.find((e) => e.building.id === id);
+            if (entry) {
+              if (onBuildingClick) {
+                onBuildingClick(id);
+              } else {
+                entry.marker.openPopup?.();
+              }
+            }
+          },
+        });
+      }
     });
 
     return () => {
@@ -249,6 +266,4 @@ const MapComponent = forwardRef<MapHandle, Props>(function MapComponent(
   }, []);
 
   return <div ref={containerRef} style={{ height, width: '100%' }} className="z-0" />;
-});
-
-export default MapComponent;
+}

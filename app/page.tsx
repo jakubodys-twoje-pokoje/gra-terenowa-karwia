@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { QrCode, MapPin, ChevronDown, ExternalLink, Navigation } from 'lucide-react';
+import { QrCode, MapPin, ChevronDown, ExternalLink, Navigation, Crosshair } from 'lucide-react';
 import type { MapBuilding, MapHandle } from '@/components/MapComponent';
+import { useAuth } from '@/lib/useAuth';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
 
@@ -51,9 +52,10 @@ export default function MapPage() {
   const [sheetOpen, setSheetOpen]         = useState(false);
   const [nearestToast, setNearestToast]   = useState('');
   const [nearestLoading, setNearestLoading] = useState(false);
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const mapRef   = useRef<MapHandle>(null);
-  const router   = useRouter();
+  const sheetRef    = useRef<HTMLDivElement>(null);
+  const mapHandle   = useRef<MapHandle | null>(null);
+  const router      = useRouter();
+  const { user }    = useAuth();
 
   const load = useCallback(async () => {
     const userId = getUserId();
@@ -84,6 +86,16 @@ export default function MapPage() {
     }
   };
 
+  // ── Center on user ───────────────────────────────────────────────────────
+  const handleCenterOnUser = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => mapHandle.current?.panTo(pos.coords.latitude, pos.coords.longitude, 17),
+      () => {},
+      { timeout: 6000, maximumAge: 30000 },
+    );
+  };
+
   // ── Nearest building button ───────────────────────────────────────────────
   const handleNearest = () => {
     if (buildings.length === 0) return;
@@ -99,17 +111,19 @@ export default function MapPage() {
       (pos) => {
         const { latitude, longitude } = pos.coords;
 
-        // Find closest building (any, not just undiscovered)
-        let nearest = buildings[0];
-        let minDist = haversineKm(latitude, longitude, nearest.lat, nearest.lng);
+        // Prefer nearest UNDISCOVERED building; fall back to any if all are discovered
+        const pool = buildings.filter((b) => !discoveredIds.has(b.id));
+        const candidates = pool.length > 0 ? pool : buildings;
 
-        buildings.forEach((b) => {
+        let nearest = candidates[0];
+        let minDist = haversineKm(latitude, longitude, nearest.lat, nearest.lng);
+        candidates.forEach((b) => {
           const d = haversineKm(latitude, longitude, b.lat, b.lng);
           if (d < minDist) { minDist = d; nearest = b; }
         });
 
         // Pan map to it and open the sheet
-        mapRef.current?.panTo(nearest.lat, nearest.lng, 17);
+        mapHandle.current?.panTo(nearest.lat, nearest.lng, 17);
         setSelected(nearest);
         setSheetOpen(true);
         setNearestLoading(false);
@@ -118,9 +132,9 @@ export default function MapPage() {
           ? `${Math.round(minDist * 1000)} m`
           : `${minDist.toFixed(1)} km`;
         setNearestToast(
-          discoveredIds.has(nearest.id)
-            ? `📍 ${nearest.name} – ${distLabel} stąd`
-            : `🔍 Najbliższy obiekt – ${distLabel} stąd`,
+          pool.length === 0
+            ? `📍 ${nearest.name} – ${distLabel} stąd (wszystkie odkryte!)`
+            : `🔍 Najbliższy nieodkryty – ${distLabel} stąd`,
         );
         setTimeout(() => setNearestToast(''), 4000);
       },
@@ -145,12 +159,13 @@ export default function MapPage() {
     <div className="relative h-full overflow-hidden">
       {/* Full-screen map */}
       <MapComponent
-        ref={mapRef}
         buildings={mapBuildings}
         height="100%"
         zoom={17}
         showUserLocation
+        userAvatarUrl={user?.avatarUrl}
         onBuildingClick={handleBuildingClick}
+        onMapReady={(h) => { mapHandle.current = h; }}
       />
 
       {/* Stats pill */}
@@ -163,19 +178,28 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* ── Nearest building button ── */}
-      <button
-        onClick={handleNearest}
-        disabled={nearestLoading || buildings.length === 0}
-        className="absolute bottom-24 right-4 z-[500] bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3.5 py-3 flex items-center gap-2 hover:bg-white active:scale-95 transition-all disabled:opacity-50"
-        title="Najbliższy obiekt"
-      >
-        <Navigation
-          size={18}
-          className={`text-ocean-500 ${nearestLoading ? 'animate-pulse' : ''}`}
-        />
-        <span className="text-xs font-bold text-ocean-800 leading-none">Najbliżej</span>
-      </button>
+      {/* ── Map controls: nearest + center-on-user ── */}
+      <div className="absolute bottom-24 right-4 z-[500] flex flex-col gap-2">
+        {/* Nearest undiscovered building */}
+        <button
+          onClick={handleNearest}
+          disabled={nearestLoading || buildings.length === 0}
+          className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3.5 py-3 flex items-center gap-2 hover:bg-white active:scale-95 transition-all disabled:opacity-50"
+          title="Najbliższy nieodkryty obiekt"
+        >
+          <Navigation size={18} className={`text-ocean-500 ${nearestLoading ? 'animate-pulse' : ''}`} />
+          <span className="text-xs font-bold text-ocean-800 leading-none">Najbliżej</span>
+        </button>
+
+        {/* Center on user location */}
+        <button
+          onClick={handleCenterOnUser}
+          className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center justify-center hover:bg-white active:scale-95 transition-all self-end"
+          title="Moja lokalizacja"
+        >
+          <Crosshair size={18} className="text-ocean-500" />
+        </button>
+      </div>
 
       {/* Nearest toast */}
       {nearestToast && (

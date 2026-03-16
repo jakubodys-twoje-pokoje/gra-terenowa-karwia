@@ -3,75 +3,33 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
-// Inline SVG wave shape — the RIGHT edge of the overlay is the organic ocean wave.
-// When the overlay translates left→right across screen, this edge is the "breaking wave".
-// viewBox is 110 wide so the wavy edge (80-110) is clearly visible on screen.
-const WAVE_SVG = (
-  <svg
-    viewBox="0 0 110 100"
-    preserveAspectRatio="none"
-    className="absolute inset-0 w-full h-full"
-    aria-hidden
-  >
+// Timings (ms)
+const GROW_MS   = 320;  // circle expands to cover screen
+const HOLD_MS   = 80;   // fully covered — new page is rendered underneath
+const SHRINK_MS = 280;  // circle recedes revealing new page
+
+// The fill: ocean gradient + wave texture baked as a static SVG background.
+// The clip-path circle grow/shrink is the animation — no translateX at all.
+const FILL_SVG = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"
+       preserveAspectRatio="xMidYMid slice" viewBox="0 0 100 100">
     <defs>
-      <linearGradient id="wg" x1="0%" y1="20%" x2="100%" y2="80%">
-        <stop offset="0%"   stopColor="#07304F" />
-        <stop offset="50%"  stopColor="#0F5F92" />
-        <stop offset="100%" stopColor="#1A88C9" />
-      </linearGradient>
-      {/* Foam / highlight strip along the wave edge */}
-      <linearGradient id="foam" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%"   stopColor="rgba(255,255,255,0)" />
-        <stop offset="100%" stopColor="rgba(255,255,255,0.55)" />
-      </linearGradient>
+      <radialGradient id="rg" cx="50%" cy="50%" r="70%">
+        <stop offset="0%"   stop-color="#1A88C9"/>
+        <stop offset="55%"  stop-color="#0F5F92"/>
+        <stop offset="100%" stop-color="#07304F"/>
+      </radialGradient>
     </defs>
-
-    {/* Main ocean body */}
-    <path
-      d="M0,0 L78,0
-         C 84,7   93,13  82,21
-         C 71,29  90,36  81,44
-         C 72,52  94,59  83,67
-         C 72,75  91,83  80,91
-         C 72,97  78,100 78,100
-         L 0,100 Z"
-      fill="url(#wg)"
-    />
-
-    {/* Lighter secondary wave — depth illusion */}
-    <path
-      d="M0,0 L72,0
-         C 78,8   88,14  76,22
-         C 64,30  84,37  74,46
-         C 64,55  87,61  75,69
-         C 63,77  83,84  71,93
-         L 70,100 L 0,100 Z"
-      fill="rgba(255,255,255,0.06)"
-    />
-
-    {/* Foam strip at the wave edge — makes it look organic */}
-    <path
-      d="M78,0
-         C 84,7   93,13  82,21
-         C 71,29  90,36  81,44
-         C 72,52  94,59  83,67
-         C 72,75  91,83  80,91
-         C 72,97  78,100 78,100
-         L 84,100
-         C 86,93  96,86  84,79
-         C 72,72  94,65  86,57
-         C 78,49  98,41  87,33
-         C 76,25  93,18  86,10
-         C 81,4   84,0   84,0 Z"
-      fill="url(#foam)"
-    />
+    <rect width="100" height="100" fill="url(#rg)"/>
+    <!-- soft wave shapes for depth -->
+    <path d="M-10,60 C10,52 30,68 50,60 C70,52 90,68 110,60 L110,110 L-10,110 Z"
+          fill="rgba(255,255,255,0.04)"/>
+    <path d="M-10,70 C15,62 35,76 55,68 C75,60 95,74 115,66 L115,110 L-10,110 Z"
+          fill="rgba(255,255,255,0.06)"/>
+    <path d="M-10,80 C20,73 40,86 60,79 C80,72 100,84 120,77 L120,110 L-10,110 Z"
+          fill="rgba(255,255,255,0.05)"/>
   </svg>
-);
-
-// Duration constants (ms)
-const ENTER_MS = 340;  // wave slides in
-const HOLD_MS  = 90;   // brief pause fully covering screen
-const EXIT_MS  = 300;  // wave slides out
+`;
 
 export default function PageTransition() {
   const pathname  = usePathname();
@@ -86,32 +44,36 @@ export default function PageTransition() {
     const el = divRef.current;
     if (!el) return;
 
-    // Clear any running timers
     timerRefs.current.forEach(clearTimeout);
     timerRefs.current = [];
 
-    // ── Phase 1: slide IN from left ──────────────────────────────────────────
-    el.style.transition = `transform ${ENTER_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`;
-    el.style.transform  = 'translateX(0%)';
+    // ── Phase 1: set initial state, force layout, then grow ─────────────────
     el.style.display    = 'block';
+    el.style.transition = 'none';
+    el.style.clipPath   = 'circle(0% at 50% 50%)';
 
-    // ── Phase 2: hold ────────────────────────────────────────────────────────
+    // Force the browser to commit the initial state before starting transition
+    void el.offsetHeight;
+
+    el.style.transition = `clip-path ${GROW_MS}ms cubic-bezier(0.4, 0, 0.5, 1)`;
+    el.style.clipPath   = 'circle(150% at 50% 50%)';
+
+    // ── Phase 2: hold (freeze transition so new-page renders underneath) ────
     const t1 = setTimeout(() => {
       el.style.transition = 'none';
-    }, ENTER_MS);
+    }, GROW_MS);
 
-    // ── Phase 3: slide OUT to right ──────────────────────────────────────────
+    // ── Phase 3: shrink ──────────────────────────────────────────────────────
     const t2 = setTimeout(() => {
-      el.style.transition = `transform ${EXIT_MS}ms cubic-bezier(0.4, 0, 0.8, 1)`;
-      el.style.transform  = 'translateX(110%)';
-    }, ENTER_MS + HOLD_MS);
+      el.style.transition = `clip-path ${SHRINK_MS}ms cubic-bezier(0.5, 0, 0.6, 1)`;
+      el.style.clipPath   = 'circle(0% at 50% 50%)';
+    }, GROW_MS + HOLD_MS);
 
-    // ── Phase 4: hide (back to standby) ─────────────────────────────────────
+    // ── Phase 4: hide ────────────────────────────────────────────────────────
     const t3 = setTimeout(() => {
       el.style.transition = 'none';
-      el.style.transform  = 'translateX(-110%)';
       el.style.display    = 'none';
-    }, ENTER_MS + HOLD_MS + EXIT_MS + 50);
+    }, GROW_MS + HOLD_MS + SHRINK_MS + 50);
 
     timerRefs.current = [t1, t2, t3];
     return () => timerRefs.current.forEach(clearTimeout);
@@ -120,11 +82,10 @@ export default function PageTransition() {
   return (
     <div
       ref={divRef}
-      // z-[49]: BELOW Navigation (z-50) so the tab bar stays visible during transition
+      // z-[49] → BELOW Navigation bar (z-50) — tab bar stays visible throughout
       className="fixed inset-0 z-[49] pointer-events-none hidden overflow-hidden"
-      style={{ transform: 'translateX(-110%)' }}
-    >
-      {WAVE_SVG}
-    </div>
+      style={{ clipPath: 'circle(0% at 50% 50%)' }}
+      dangerouslySetInnerHTML={{ __html: FILL_SVG }}
+    />
   );
 }
