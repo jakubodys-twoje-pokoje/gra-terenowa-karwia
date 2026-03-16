@@ -15,6 +15,7 @@ const navItems = [
 
 export default function Navigation() {
   const pathname = usePathname();
+  if (pathname === '/admin') return null;
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-ocean-100 safe-area-pb">
