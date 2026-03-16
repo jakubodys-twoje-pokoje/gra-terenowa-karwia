@@ -52,7 +52,13 @@ export async function POST(req: NextRequest) {
       include: { images: { orderBy: { order: 'asc' } } },
     });
     return NextResponse.json(building, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'QR URL już istnieje w bazie' }, { status: 409 });
+  } catch (e: unknown) {
+    const isPrismaUniqueError =
+      typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code === 'P2002';
+    if (isPrismaUniqueError) {
+      return NextResponse.json({ error: 'QR URL już istnieje w bazie' }, { status: 409 });
+    }
+    console.error('Błąd tworzenia budynku:', e);
+    return NextResponse.json({ error: 'Błąd serwera' }, { status: 500 });
   }
 }
