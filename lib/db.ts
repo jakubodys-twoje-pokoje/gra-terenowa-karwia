@@ -4,8 +4,10 @@ import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 function makePrisma() {
-  const dbUrl = process.env.DATABASE_URL ?? 'file:./prisma/dev.db';
-  const adapter = new PrismaBetterSqlite3({ url: dbUrl });
+  const raw = process.env.DATABASE_URL ?? 'file:./prisma/dev.db';
+  // better-sqlite3 expects a plain file path, not a "file:" URL
+  const url = raw.startsWith('file:') ? raw.slice(5) : raw;
+  const adapter = new PrismaBetterSqlite3({ url });
   return new PrismaClient({ adapter });
 }
 
