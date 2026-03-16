@@ -5,11 +5,11 @@ export default defineConfig({
   schema: path.join('prisma', 'schema.prisma'),
   migrate: {
     async adapter() {
-      const { PrismaBetterSQLite3 } = await import('@prisma/adapter-better-sqlite3');
+      const { PrismaBetterSqlite3 } = await import('@prisma/adapter-better-sqlite3');
       const { default: Database } = await import('better-sqlite3');
       const dbUrl = process.env.DATABASE_URL ?? 'file:./prisma/dev.db';
       const dbPath = dbUrl.replace(/^file:/, '');
-      return new PrismaBetterSQLite3(new Database(dbPath));
+      return new PrismaBetterSqlite3(new Database(dbPath));
     },
   },
 });
