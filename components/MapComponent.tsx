@@ -115,9 +115,11 @@ function makeIcon(L: any, b: MapBuilding, scale: number) {
     const src = b.outlineImageUrl ?? b.imageUrl;
     const body = src
       ? photoCircle(src, sz, '#9CA3AF', rw, true)
-      : `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#E5E7EB;
-           outline:${rw}px solid white;border:${rw}px solid #9CA3AF;box-sizing:border-box;
-           display:flex;align-items:center;justify-content:center;font-size:${Math.round(15 * scale)}px;color:#9CA3AF;">?</div>`;
+      : `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#0F5F92;
+           outline:${rw}px solid white;border:${rw}px solid #0F5F92;box-sizing:border-box;
+           display:flex;align-items:center;justify-content:center;overflow:hidden;">
+           <img src="${LOGO_URL}" style="width:70%;height:70%;object-fit:contain;display:block;filter:brightness(0) invert(1);opacity:0.7;" />
+         </div>`;
     html = `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:${dropShadow(0.2)};opacity:0.85">
       ${body}
       ${svgPointer('#9CA3AF', tip)}
@@ -140,10 +142,13 @@ export default function MapComponent({
   height = '400px',
   showUserLocation = false,
   interactive = true,
-  userAvatarUrl,
+  userAvatarUrl: _userAvatarUrlRaw,
   onMapReady,
   onUserLocation,
 }: Props) {
+  // Never pass blob: URLs into Leaflet HTML strings — they can be revoked and crash marker rendering
+  const userAvatarUrl = _userAvatarUrlRaw?.startsWith('blob:') ? null : _userAvatarUrlRaw;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<import('leaflet').Map | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

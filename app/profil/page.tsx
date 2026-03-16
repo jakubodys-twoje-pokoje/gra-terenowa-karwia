@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { User, Save, Check, Camera, Loader2, LogOut, Lock, Mail, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useAuth, logout } from '@/lib/useAuth';
+import { useAuth, logout, fetchMe } from '@/lib/useAuth';
 
 // Generate a stable display number from UUID
 function guestNumber(userId: string): string {
@@ -73,7 +73,7 @@ function GuestView({ onRegister }: { onRegister: () => void }) {
       {/* Twoje Pokoje branding */}
       <div className="mt-8 mb-4 flex flex-col items-center gap-2">
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Partner projektu</p>
-        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-50 hover:opacity-80 transition-opacity">
+        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-10 w-auto" />
         </a>
@@ -199,7 +199,6 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
       if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
     };
     xhr.onload = async () => {
-      URL.revokeObjectURL(preview);
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const { url, error: apiErr } = JSON.parse(xhr.responseText);
@@ -207,22 +206,29 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
             setUploadError(apiErr ?? 'Błąd serwera przy uploading');
             setAvatarUrl(user.avatarUrl ?? null);
           } else {
+            // Set real URL BEFORE revoking the preview blob
             setAvatarUrl(`${url}?t=${Date.now()}`);
+            URL.revokeObjectURL(preview);
             const saveRes = await fetch('/api/profil', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ avatarUrl: url, nickname: form.nickname, city: form.city }),
             });
-            if (!saveRes.ok) {
+            if (saveRes.ok) {
+              // Refresh global auth cache so map/navbar get the new avatar URL
+              await fetchMe();
+            } else {
               const d = await saveRes.json().catch(() => ({}));
               setUploadError(d.error ?? `Błąd zapisu profilu (${saveRes.status})`);
             }
           }
         } catch {
+          URL.revokeObjectURL(preview);
           setUploadError('Nieprawidłowa odpowiedź serwera');
           setAvatarUrl(user.avatarUrl ?? null);
         }
       } else {
+        URL.revokeObjectURL(preview);
         let msg = `Błąd uploadu (${xhr.status})`;
         try { const d = JSON.parse(xhr.responseText); msg = d.error ?? msg; } catch { /* ignore */ }
         setUploadError(msg);
@@ -341,7 +347,7 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
       {/* Twoje Pokoje branding */}
       <div className="mt-8 mb-4 flex flex-col items-center gap-2">
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Partner projektu</p>
-        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-50 hover:opacity-80 transition-opacity">
+        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-10 w-auto" />
         </a>
