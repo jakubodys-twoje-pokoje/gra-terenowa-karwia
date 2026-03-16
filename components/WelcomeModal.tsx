@@ -117,8 +117,14 @@ export default function WelcomeModal() {
           </ul>
         </div>
 
+        {/* Twoje Pokoje branding */}
+        <div className="flex justify-center pt-1 pb-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/twoje-pokoje-logo.webp" alt="Twoje Pokoje" className="h-6 w-auto opacity-50" />
+        </div>
+
         {/* Actions */}
-        <div className="px-6 pt-4 pb-6 space-y-2.5">
+        <div className="px-6 pt-3 pb-6 space-y-2.5">
           <button
             onClick={goRegister}
             className="w-full bg-ocean-500 hover:bg-ocean-600 text-white py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"

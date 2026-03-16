@@ -70,6 +70,14 @@ function GuestView({ onRegister }: { onRegister: () => void }) {
         Zarejestruj się, by zapisać dane
       </button>
 
+      {/* Twoje Pokoje branding */}
+      <div className="flex justify-center mt-6 mb-2">
+        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-40 hover:opacity-60 transition-opacity">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/twoje-pokoje-logo.webp" alt="Twoje Pokoje" className="h-6 w-auto" />
+        </a>
+      </div>
+
       {/* Popup */}
       {showPopup && (
         <div className="fixed inset-0 z-[900] flex items-end justify-center p-4 bg-black/40"
@@ -157,35 +165,58 @@ function UnverifiedView({ email }: { email: string }) {
 function VerifiedView({ user, onLogout }: { user: { email: string; nickname: string | null; city: string | null; avatarUrl: string | null }, onLogout: () => void }) {
   const [form, setForm] = useState({ nickname: user.nickname ?? '', city: user.city ?? '' });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl ?? null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null); // null = not uploading
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadingAvatar = uploadProgress !== null;
+
+  // Warn user before leaving while upload is in progress
+  useEffect(() => {
+    if (!uploadingAvatar) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [uploadingAvatar]);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const preview = URL.createObjectURL(file);
     setAvatarUrl(preview);
-    setUploadingAvatar(true);
+    setUploadProgress(0);
     const userId = getUserId();
     const fd = new FormData();
     fd.append('file', file);
     fd.append('userId', userId);
-    const res = await fetch('/api/upload/avatar', { method: 'POST', body: fd });
-    if (res.ok) {
-      const { url } = await res.json();
-      setAvatarUrl(`${url}?t=${Date.now()}`);
-      await fetch('/api/profil', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatarUrl: url, ...form }),
-      });
-    } else {
+
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+    };
+    xhr.onload = async () => {
+      URL.revokeObjectURL(preview);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const { url } = JSON.parse(xhr.responseText);
+        setAvatarUrl(`${url}?t=${Date.now()}`);
+        await fetch('/api/profil', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatarUrl: url, ...form }),
+        });
+      } else {
+        setAvatarUrl(user.avatarUrl ?? null);
+      }
+      setUploadProgress(null);
+    };
+    xhr.onerror = () => {
+      URL.revokeObjectURL(preview);
       setAvatarUrl(user.avatarUrl ?? null);
-    }
-    URL.revokeObjectURL(preview);
-    setUploadingAvatar(false);
+      setUploadProgress(null);
+    };
+    xhr.open('POST', '/api/upload/avatar');
+    xhr.send(fd);
     e.target.value = '';
   };
 
@@ -221,7 +252,7 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
       </div>
 
       {/* Avatar */}
-      <div className="flex justify-center mb-6">
+      <div className="flex flex-col items-center mb-6 gap-3">
         <button type="button" onClick={() => fileInputRef.current?.click()} className="relative group" disabled={uploadingAvatar}>
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -235,6 +266,24 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
             {uploadingAvatar ? <Loader2 size={14} className="text-white animate-spin" /> : <Camera size={14} className="text-white" />}
           </div>
         </button>
+
+        {/* Upload progress */}
+        {uploadProgress !== null && (
+          <div className="w-full max-w-[220px]">
+            <div className="flex justify-between text-xs text-ocean-500 font-semibold mb-1">
+              <span>Wysyłanie zdjęcia…</span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <div className="h-2 bg-ocean-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-ocean-500 rounded-full transition-all duration-200"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-gray-400 text-center mt-1.5">Nie zamykaj tej strony</p>
+          </div>
+        )}
+
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
       </div>
 
@@ -262,6 +311,14 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
           {saved ? <><Check size={16} /> Zapisano!</> : saving ? 'Zapisuję…' : <><Save size={16} /> Zapisz profil</>}
         </button>
       </form>
+
+      {/* Twoje Pokoje branding */}
+      <div className="flex justify-center mt-6 mb-2">
+        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-40 hover:opacity-60 transition-opacity">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/twoje-pokoje-logo.webp" alt="Twoje Pokoje" className="h-6 w-auto" />
+        </a>
+      </div>
     </div>
   );
 }
