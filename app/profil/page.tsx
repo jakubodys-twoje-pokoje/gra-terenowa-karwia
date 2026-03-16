@@ -75,7 +75,7 @@ function GuestView({ onRegister }: { onRegister: () => void }) {
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Partner projektu</p>
         <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-50 hover:opacity-80 transition-opacity">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-7 w-auto" />
+          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-10 w-auto" />
         </a>
       </div>
 
@@ -343,7 +343,7 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Partner projektu</p>
         <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="opacity-50 hover:opacity-80 transition-opacity">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-7 w-auto" />
+          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-10 w-auto" />
         </a>
       </div>
     </div>

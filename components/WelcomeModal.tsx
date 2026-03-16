@@ -147,7 +147,7 @@ export default function WelcomeModal() {
         {/* Twoje Pokoje branding */}
         <div className="flex justify-center pb-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-5 w-auto opacity-35" />
+          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-7 w-auto opacity-40" />
         </div>
       </div>
     </>

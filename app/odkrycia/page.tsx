@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { Compass, Trophy, Medal, MapPin, Clock, Crown } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Compass, Trophy, Medal, Crown } from 'lucide-react';
 import Link from 'next/link';
 import AchievementBadge from '@/components/AchievementBadge';
 import { ACHIEVEMENTS, getUnlockedAchievements } from '@/lib/achievements';
 
 interface Discovery {
   discoveredAt: string;
-  building: { id: number; category: string };
+  building: { id: number; category: string; lat: number; lng: number };
 }
 
 interface RankEntry {
@@ -27,24 +27,242 @@ function getUserId(): string {
   return id;
 }
 
-function formatDuration(from: Date, to: Date) {
-  const diffMs = to.getTime() - from.getTime();
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (days === 0) return 'dziś';
-  if (days === 1) return '1 dzień';
-  if (days < 7) return `${days} dni`;
-  const weeks = Math.floor(days / 7);
-  if (weeks === 1) return '1 tydzień';
-  if (weeks < 4) return `${weeks} tygodnie`;
-  const months = Math.floor(days / 30);
-  return months === 1 ? '1 miesiąc' : `${months} miesięcy`;
-}
-
 function displayName(entry: RankEntry) {
   if (entry.nickname) return entry.nickname;
   return `Odkrywca #${entry.userId.slice(-4).toUpperCase()}`;
 }
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calcStreak(discoveries: Discovery[]) {
+  if (discoveries.length === 0) return { current: 0, best: 0 };
+  const MS_DAY = 1000 * 60 * 60 * 24;
+  const uniqueDays = Array.from(new Set(discoveries.map((d) =>
+    Math.floor(new Date(d.discoveredAt).getTime() / MS_DAY)
+  ))).sort((a, b) => a - b);
+
+  let best = 1, run = 1;
+  for (let i = 1; i < uniqueDays.length; i++) {
+    run = uniqueDays[i] - uniqueDays[i - 1] === 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+  }
+  const today = Math.floor(Date.now() / MS_DAY);
+  const lastDay = uniqueDays[uniqueDays.length - 1];
+  const current = today - lastDay <= 1 ? run : 0;
+  return { current, best };
+}
+
+function calcKm(discoveries: Discovery[]) {
+  const sorted = [...discoveries].sort((a, b) =>
+    new Date(a.discoveredAt).getTime() - new Date(b.discoveredAt).getTime()
+  );
+  let total = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    total += haversineKm(
+      sorted[i - 1].building.lat, sorted[i - 1].building.lng,
+      sorted[i].building.lat, sorted[i].building.lng,
+    );
+  }
+  return total;
+}
+
+function calcPlaytime(discoveries: Discovery[]) {
+  if (discoveries.length < 2) return null;
+  const times = discoveries.map((d) => new Date(d.discoveredAt).getTime());
+  const first = Math.min(...times);
+  const last = Math.max(...times);
+  const ms = last - first;
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days === 0) return `${hours}h`;
+  if (days === 1) return `1 dzień ${hours}h`;
+  return `${days} dni`;
+}
+
+// ── Animated counter ─────────────────────────────────────────────────────────
+function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
+  const [display, setDisplay] = useState(0);
+  const raf = useRef<number>(0);
+  useEffect(() => {
+    const start = Date.now();
+    const duration = 900;
+    const tick = () => {
+      const t = Math.min(1, (Date.now() - start) / duration);
+      const ease = 1 - Math.pow(1 - t, 3);
+      setDisplay(ease * value);
+      if (t < 1) raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [value]);
+  return <>{display.toFixed(decimals)}</>;
+}
+
+// ── SVG Donut ─────────────────────────────────────────────────────────────────
+function DonutRing({ pct, count, total }: { pct: number; count: number; total: number }) {
+  const R = 54;
+  const C = 2 * Math.PI * R;
+  const [dash, setDash] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setDash((pct / 100) * C), 80);
+    return () => clearTimeout(t);
+  }, [pct, C]);
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative w-44 h-44">
+        <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+          <defs>
+            <linearGradient id="donutGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#2A8EC9" />
+              <stop offset="100%" stopColor="#0F5F92" />
+            </linearGradient>
+          </defs>
+          <circle cx="60" cy="60" r={R} fill="none" stroke="#E5F1FA" strokeWidth="12" />
+          <circle
+            cx="60" cy="60" r={R} fill="none"
+            stroke="url(#donutGrad)" strokeWidth="12"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${C}`}
+            style={{ transition: 'stroke-dasharray 1.1s cubic-bezier(0.4,0,0.2,1)' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-4xl font-extrabold text-ocean-700 leading-none">
+            <AnimatedNumber value={pct} />%
+          </span>
+          <span className="text-xs text-gray-400 mt-1 font-semibold">
+            {count} / {total}
+          </span>
+        </div>
+      </div>
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Ukończono</p>
+    </div>
+  );
+}
+
+// ── Category bars ─────────────────────────────────────────────────────────────
+const CAT_CONFIG: Record<string, { label: string; emoji: string; color: string }> = {
+  beach:      { label: 'Plaża',    emoji: '🏖️', color: '#06B6D4' },
+  landmark:   { label: 'Zabytki',  emoji: '🏛️', color: '#3B82F6' },
+  food:       { label: 'Jedzenie', emoji: '🐟', color: '#F97316' },
+  hotel:      { label: 'Nocleg',   emoji: '🏨', color: '#A855F7' },
+  attraction: { label: 'Atrakcja', emoji: '⭐', color: '#EAB308' },
+  nature:     { label: 'Natura',   emoji: '🌿', color: '#22C55E' },
+};
+
+function CategoryBars({ categories }: { categories: string[] }) {
+  const counts: Record<string, number> = {};
+  categories.forEach((c) => { counts[c] = (counts[c] ?? 0) + 1; });
+  const max = Math.max(1, ...Object.values(counts));
+  const entries = Object.entries(CAT_CONFIG).filter(([k]) => counts[k]);
+
+  if (entries.length === 0) {
+    return <p className="text-gray-400 text-xs text-center py-2">Brak odkryć</p>;
+  }
+
+  return (
+    <div className="space-y-2.5">
+      {entries.map(([key, cfg]) => (
+        <div key={key} className="flex items-center gap-2">
+          <span className="text-base w-6 text-center">{cfg.emoji}</span>
+          <div className="flex-1">
+            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${(counts[key] / max) * 100}%`,
+                  background: cfg.color,
+                  transitionDelay: '200ms',
+                }}
+              />
+            </div>
+          </div>
+          <span className="text-xs font-bold text-gray-500 w-4 text-right">{counts[key]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Day of week bars ──────────────────────────────────────────────────────────
+const DAYS = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb'];
+
+function DayChart({ discoveries }: { discoveries: Discovery[] }) {
+  const counts = new Array(7).fill(0);
+  discoveries.forEach((d) => { counts[new Date(d.discoveredAt).getDay()]++; });
+  const max = Math.max(1, ...counts);
+  const best = counts.indexOf(Math.max(...counts));
+
+  return (
+    <div className="flex items-end justify-between gap-1 h-16">
+      {counts.map((c, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+          <div className="w-full flex flex-col justify-end" style={{ height: '44px' }}>
+            <div
+              className="w-full rounded-sm transition-all duration-700"
+              style={{
+                height: `${(c / max) * 44}px`,
+                minHeight: c > 0 ? '3px' : '0',
+                background: i === best && c > 0 ? '#0F5F92' : '#CBD5E1',
+                transitionDelay: `${i * 60}ms`,
+              }}
+            />
+          </div>
+          <span className={`text-[9px] font-bold ${i === best && c > 0 ? 'text-ocean-600' : 'text-gray-400'}`}>
+            {DAYS[i]}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Hourly activity bars ──────────────────────────────────────────────────────
+function HourChart({ discoveries }: { discoveries: Discovery[] }) {
+  // Group into 6 blocks of 4 hours
+  const blocks = [0, 4, 8, 12, 16, 20];
+  const labels = ['0–4', '4–8', '8–12', '12–16', '16–20', '20–24'];
+  const counts = blocks.map((start) =>
+    discoveries.filter((d) => {
+      const h = new Date(d.discoveredAt).getHours();
+      return h >= start && h < start + 4;
+    }).length
+  );
+  const max = Math.max(1, ...counts);
+  const bestBlock = counts.indexOf(Math.max(...counts));
+
+  return (
+    <div className="flex items-end justify-between gap-1.5 h-16">
+      {counts.map((c, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+          <div className="w-full flex flex-col justify-end" style={{ height: '44px' }}>
+            <div
+              className="w-full rounded-sm transition-all duration-700"
+              style={{
+                height: `${(c / max) * 44}px`,
+                minHeight: c > 0 ? '3px' : '0',
+                background: i === bestBlock && c > 0 ? '#F0A500' : '#FEF3C7',
+                transitionDelay: `${i * 80}ms`,
+              }}
+            />
+          </div>
+          <span className={`text-[8px] font-bold ${i === bestBlock && c > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+            {labels[i]}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function OdkryciaPage() {
   const [discoveries, setDiscoveries] = useState<Discovery[]>([]);
   const [totalBuildings, setTotalBuildings] = useState(0);
@@ -78,12 +296,10 @@ export default function OdkryciaPage() {
   const unlockedAchievements = getUnlockedAchievements(count, totalBuildings, categories);
   const unlockedIds = new Set(unlockedAchievements.map((a) => a.id));
 
-  const firstDiscovery = discoveries.length > 0
-    ? new Date(Math.min(...discoveries.map((d) => new Date(d.discoveredAt).getTime())))
-    : null;
-  const lastDiscovery = discoveries.length > 0
-    ? new Date(Math.max(...discoveries.map((d) => new Date(d.discoveredAt).getTime())))
-    : null;
+  const streak = calcStreak(discoveries);
+  const kmTotal = calcKm(discoveries);
+  const playtime = calcPlaytime(discoveries);
+  const totalRankCount = (ranking.length > 0 ? ranking[ranking.length - 1].rank : null) ?? ranking.length;
 
   return (
     <div className="px-4 pt-6">
@@ -121,86 +337,107 @@ export default function OdkryciaPage() {
         </div>
       )}
 
-      {/* STATS TAB */}
+      {/* ── STATS TAB ── */}
       {!loading && activeTab === 'stats' && (
-        <div className="space-y-4">
-          {/* Progress */}
-          <div className="bg-white rounded-3xl p-5 shadow-card">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-semibold text-gray-600 flex items-center gap-1.5">
-                <MapPin size={14} className="text-ocean-500" />
-                Odkryte miejsca
-              </span>
-              <span className="font-extrabold text-ocean-600">{count} / {totalBuildings}</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden mb-1">
-              <div
-                className="h-3 rounded-full bg-gradient-to-r from-ocean-400 to-ocean-600 transition-all duration-700"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 text-right">{pct}% ukończone</p>
-          </div>
+        <div className="space-y-4 pb-6">
 
-          {/* Badges progress */}
-          <div className="bg-white rounded-3xl p-5 shadow-card">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-semibold text-gray-600 flex items-center gap-1.5">
-                <Trophy size={14} className="text-sand-500" />
-                Odznaki
-              </span>
-              <span className="font-extrabold text-sand-600">{unlockedIds.size} / {ACHIEVEMENTS.length}</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-              <div
-                className="h-3 rounded-full bg-gradient-to-r from-sand-400 to-sand-600 transition-all duration-700"
-                style={{ width: `${ACHIEVEMENTS.length > 0 ? (unlockedIds.size / ACHIEVEMENTS.length) * 100 : 0}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Time stats */}
-          {firstDiscovery && (
-            <div className="bg-white rounded-3xl p-5 shadow-card">
-              <h3 className="text-sm font-semibold text-gray-600 flex items-center gap-1.5 mb-3">
-                <Clock size={14} className="text-ocean-400" />
-                Czas przygody
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-ocean-50 rounded-2xl p-3 text-center">
-                  <p className="text-xl font-extrabold text-ocean-700">
-                    {formatDuration(firstDiscovery, lastDiscovery ?? new Date())}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">od pierwszego odkrycia</p>
-                </div>
-                <div className="bg-sand-50 rounded-2xl p-3 text-center">
-                  <p className="text-xl font-extrabold text-sand-700">
-                    {count > 0 && firstDiscovery
-                      ? (count / Math.max(1, Math.ceil((Date.now() - firstDiscovery.getTime()) / (1000 * 60 * 60 * 24)))).toFixed(1)
-                      : '—'}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">odkryć / dzień</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {count === 0 && (
+          {count === 0 ? (
             <div className="text-center py-10 px-4">
               <div className="text-5xl mb-3">🗺️</div>
               <p className="text-ocean-900 font-bold mb-2">Zacznij eksplorować!</p>
-              <p className="text-gray-400 text-sm mb-4">Znajdź kod QR przy budynku w Karwi i go zeskanuj.</p>
+              <p className="text-gray-400 text-sm mb-4">Znajdź kod QR przy budynku w Karwii i go zeskanuj.</p>
               <Link href="/skanuj">
                 <button className="bg-ocean-500 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-ocean-500/30">
                   Skanuj pierwszy kod QR
                 </button>
               </Link>
             </div>
+          ) : (
+            <>
+              {/* 1 — Wielki pierścień */}
+              <div className="bg-white rounded-3xl p-6 shadow-card flex flex-col items-center">
+                <DonutRing pct={pct} count={count} total={totalBuildings} />
+                <div className="w-full mt-4 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-sand-400 to-sand-600 rounded-full transition-all duration-700"
+                    style={{ width: `${ACHIEVEMENTS.length > 0 ? (unlockedIds.size / ACHIEVEMENTS.length) * 100 : 0}%` }} />
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1 self-end">
+                  {unlockedIds.size} / {ACHIEVEMENTS.length} odznak
+                </p>
+              </div>
+
+              {/* 2-kolumnowy rząd: Ranking + Seria */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* 2 — Ranking */}
+                <div className="bg-white rounded-3xl p-5 shadow-card flex flex-col items-center text-center">
+                  <span className="text-4xl leading-none mb-1">🏆</span>
+                  <p className="text-4xl font-extrabold text-ocean-700 leading-none mt-1">
+                    {currentUser ? `#${currentUser.rank}` : '—'}
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-1.5 font-semibold">
+                    {currentUser && totalRankCount > 0
+                      ? `wśród ${totalRankCount} odkrywców`
+                      : 'pozycja w rankingu'}
+                  </p>
+                </div>
+
+                {/* 3 — Seria */}
+                <div className="bg-white rounded-3xl p-5 shadow-card flex flex-col items-center text-center">
+                  <span className="text-4xl leading-none mb-1">🔥</span>
+                  <p className="text-4xl font-extrabold text-orange-500 leading-none mt-1">
+                    <AnimatedNumber value={streak.current} />
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-1.5 font-semibold">dni z rzędu</p>
+                  {streak.best > 0 && (
+                    <p className="text-[10px] text-gray-300 mt-1">rekord: {streak.best} dni</p>
+                  )}
+                </div>
+              </div>
+
+              {/* 2-kolumnowy rząd: Kilometry + Playtime */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* 4 — Kilometry */}
+                <div className="bg-white rounded-3xl p-5 shadow-card flex flex-col items-center text-center">
+                  <span className="text-4xl leading-none mb-1">🚶</span>
+                  <p className="text-4xl font-extrabold text-green-600 leading-none mt-1">
+                    <AnimatedNumber value={kmTotal} decimals={kmTotal < 1 ? 2 : 1} />
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-1.5 font-semibold">km między odkryciami</p>
+                </div>
+
+                {/* 5 — Playtime */}
+                <div className="bg-white rounded-3xl p-5 shadow-card flex flex-col items-center text-center">
+                  <span className="text-4xl leading-none mb-1">⏱️</span>
+                  <p className="text-3xl font-extrabold text-purple-600 leading-none mt-1 leading-tight">
+                    {playtime ?? '—'}
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-1.5 font-semibold">łączny czas przygody</p>
+                </div>
+              </div>
+
+              {/* 6 — Kategorie */}
+              <div className="bg-white rounded-3xl p-5 shadow-card">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Co odkryłeś?</p>
+                <CategoryBars categories={categories} />
+              </div>
+
+              {/* 7 — Dzień tygodnia */}
+              <div className="bg-white rounded-3xl p-5 shadow-card">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Twój dzień odkryć</p>
+                <DayChart discoveries={discoveries} />
+              </div>
+
+              {/* 8 — Aktywność godzinowa */}
+              <div className="bg-white rounded-3xl p-5 shadow-card">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">O której odkrywasz?</p>
+                <HourChart discoveries={discoveries} />
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {/* ODZNAKI TAB */}
+      {/* ── ODZNAKI TAB ── */}
       {!loading && activeTab === 'odznaki' && (
         <div className="grid grid-cols-2 gap-3 pb-4">
           {ACHIEVEMENTS.map((a) => (
@@ -216,10 +453,9 @@ export default function OdkryciaPage() {
         </div>
       )}
 
-      {/* RANKING TAB */}
+      {/* ── RANKING TAB ── */}
       {!loading && activeTab === 'ranking' && (
         <div className="pb-4 space-y-2">
-          {/* Current user highlight (if not in top list) */}
           {currentUser && !ranking.some((r) => r.isCurrentUser) && (
             <div className="bg-ocean-50 border-2 border-ocean-200 rounded-2xl p-3 mb-4">
               <p className="text-xs text-ocean-500 font-semibold mb-1">Twoje miejsce</p>
