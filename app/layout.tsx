@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
 import './globals.css';
 import Navigation from '@/components/Navigation';
 import PortraitGuard from '@/components/PortraitGuard';
 import ClientWrapper from '@/components/ClientWrapper';
+import WelcomeModal from '@/components/WelcomeModal';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://karwia.app'),
@@ -42,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ClientWrapper>{children}</ClientWrapper>
         <Navigation />
         <PortraitGuard />
+        <Suspense><WelcomeModal /></Suspense>
       </body>
     </html>
   );
