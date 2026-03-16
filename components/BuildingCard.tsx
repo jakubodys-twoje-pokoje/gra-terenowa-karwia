@@ -67,7 +67,9 @@ export default function BuildingCard({
         <span className={clsx('text-xs font-semibold px-2 py-0.5 rounded-full', cat.color)}>
           {cat.label}
         </span>
-        <h3 className="font-bold text-ocean-800 mt-2 leading-snug line-clamp-1">{name}</h3>
+        <h3 className="font-bold text-ocean-800 mt-2 leading-snug line-clamp-1">
+          {discovered ? name : <span className="text-gray-400 tracking-widest">???</span>}
+        </h3>
         {discovered ? (
           <p className="text-gray-500 text-sm mt-1 line-clamp-2">{description}</p>
         ) : (

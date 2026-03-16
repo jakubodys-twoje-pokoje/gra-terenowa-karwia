@@ -93,7 +93,7 @@ export default function WelcomeModal() {
         {/* Hero */}
         <div className="bg-gradient-to-br from-ocean-500 to-ocean-700 mx-4 mt-2 md:mt-4 rounded-2xl px-6 py-5 text-white text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/icon-192.png" alt="Karwia" className="w-14 h-14 rounded-2xl mx-auto mb-1 shadow-md" />
+          <img src="/icons/karwia-logo.webp" alt="Karwia" className="w-20 h-auto mx-auto mb-1 drop-shadow-md" />
           <h2 className="text-xl font-extrabold leading-tight">Witaj w Karwi!</h2>
           <p className="text-ocean-200 text-sm mt-1">Gra terenowa nad morzem</p>
         </div>

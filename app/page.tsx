@@ -54,6 +54,7 @@ export default function MapPage() {
   const [nearestLoading, setNearestLoading] = useState(false);
   const sheetRef    = useRef<HTMLDivElement>(null);
   const mapHandle   = useRef<MapHandle | null>(null);
+  const userPosRef  = useRef<[number, number] | null>(null); // cached from watchPosition
   const router      = useRouter();
   const { user }    = useAuth();
 
@@ -86,19 +87,57 @@ export default function MapPage() {
     }
   };
 
-  // ── Center on user ───────────────────────────────────────────────────────
+  // ── Center on user — uses cached watchPosition, instant response ─────────
   const handleCenterOnUser = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
+    if (userPosRef.current) {
+      mapHandle.current?.panTo(userPosRef.current[0], userPosRef.current[1], 17);
+      return;
+    }
+    // Fallback if cache not yet available (GPS still warming up)
+    navigator.geolocation?.getCurrentPosition(
       (pos) => mapHandle.current?.panTo(pos.coords.latitude, pos.coords.longitude, 17),
       () => {},
-      { timeout: 6000, maximumAge: 30000 },
+      { timeout: 8000, maximumAge: 0 },
     );
   };
 
-  // ── Nearest building button ───────────────────────────────────────────────
+  // ── Nearest building — uses cached position, no GPS cold-start ───────────
   const handleNearest = () => {
     if (buildings.length === 0) return;
+
+    const doFind = (latitude: number, longitude: number) => {
+      const pool = buildings.filter((b) => !discoveredIds.has(b.id));
+      const candidates = pool.length > 0 ? pool : buildings;
+
+      let nearest = candidates[0];
+      let minDist = haversineKm(latitude, longitude, nearest.lat, nearest.lng);
+      candidates.forEach((b) => {
+        const d = haversineKm(latitude, longitude, b.lat, b.lng);
+        if (d < minDist) { minDist = d; nearest = b; }
+      });
+
+      mapHandle.current?.panTo(nearest.lat, nearest.lng, 17);
+      setSelected(nearest);
+      setSheetOpen(true);
+      setNearestLoading(false);
+
+      const distLabel = minDist < 1
+        ? `${Math.round(minDist * 1000)} m`
+        : `${minDist.toFixed(1)} km`;
+      setNearestToast(
+        pool.length === 0
+          ? `📍 ${nearest.name} – ${distLabel} stąd (wszystkie odkryte!)`
+          : `🔍 Najbliższy nieodkryty – ${distLabel} stąd`,
+      );
+      setTimeout(() => setNearestToast(''), 4000);
+    };
+
+    // If we already have a cached position — instant
+    if (userPosRef.current) {
+      doFind(userPosRef.current[0], userPosRef.current[1]);
+      return;
+    }
+
     if (!navigator.geolocation) {
       setNearestToast('Twoja przeglądarka nie obsługuje GPS');
       setTimeout(() => setNearestToast(''), 3000);
@@ -110,40 +149,15 @@ export default function MapPage() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-
-        // Prefer nearest UNDISCOVERED building; fall back to any if all are discovered
-        const pool = buildings.filter((b) => !discoveredIds.has(b.id));
-        const candidates = pool.length > 0 ? pool : buildings;
-
-        let nearest = candidates[0];
-        let minDist = haversineKm(latitude, longitude, nearest.lat, nearest.lng);
-        candidates.forEach((b) => {
-          const d = haversineKm(latitude, longitude, b.lat, b.lng);
-          if (d < minDist) { minDist = d; nearest = b; }
-        });
-
-        // Pan map to it and open the sheet
-        mapHandle.current?.panTo(nearest.lat, nearest.lng, 17);
-        setSelected(nearest);
-        setSheetOpen(true);
-        setNearestLoading(false);
-
-        const distLabel = minDist < 1
-          ? `${Math.round(minDist * 1000)} m`
-          : `${minDist.toFixed(1)} km`;
-        setNearestToast(
-          pool.length === 0
-            ? `📍 ${nearest.name} – ${distLabel} stąd (wszystkie odkryte!)`
-            : `🔍 Najbliższy nieodkryty – ${distLabel} stąd`,
-        );
-        setTimeout(() => setNearestToast(''), 4000);
+        userPosRef.current = [latitude, longitude];
+        doFind(latitude, longitude);
       },
       () => {
         setNearestLoading(false);
         setNearestToast('Nie udało się pobrać lokalizacji — sprawdź uprawnienia GPS');
         setTimeout(() => setNearestToast(''), 4000);
       },
-      { timeout: 8000, maximumAge: 30000 },
+      { timeout: 10000, maximumAge: 0, enableHighAccuracy: true },
     );
   };
 
@@ -166,6 +180,7 @@ export default function MapPage() {
         userAvatarUrl={user?.avatarUrl}
         onBuildingClick={handleBuildingClick}
         onMapReady={(h) => { mapHandle.current = h; }}
+        onUserLocation={(lat, lng) => { userPosRef.current = [lat, lng]; }}
       />
 
       {/* Stats pill */}
@@ -178,8 +193,8 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* ── Map controls: nearest + center-on-user ── */}
-      <div className="absolute bottom-24 right-4 z-[500] flex flex-col gap-2">
+      {/* ── Map controls — inline row ── */}
+      <div className="absolute bottom-24 right-4 z-[500] flex flex-row items-center gap-2">
         {/* Nearest undiscovered building */}
         <button
           onClick={handleNearest}
@@ -191,10 +206,10 @@ export default function MapPage() {
           <span className="text-xs font-bold text-ocean-800 leading-none">Najbliżej</span>
         </button>
 
-        {/* Center on user location */}
+        {/* Center on user — small square pill */}
         <button
           onClick={handleCenterOnUser}
-          className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center justify-center hover:bg-white active:scale-95 transition-all self-end"
+          className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center justify-center hover:bg-white active:scale-95 transition-all"
           title="Moja lokalizacja"
         >
           <Crosshair size={18} className="text-ocean-500" />

@@ -32,10 +32,12 @@ interface Props {
   userAvatarUrl?: string | null;
   /** Called once the Leaflet map is ready — gives caller an imperative handle */
   onMapReady?: (handle: MapHandle) => void;
+  /** Called on every GPS position update (only when showUserLocation=true) */
+  onUserLocation?: (lat: number, lng: number) => void;
 }
 
 const KARWIA_CENTER: [number, number] = [54.828701688893595, 18.210140614060844];
-const LOGO_URL = '/icons/icon-192.png';
+const LOGO_URL = '/icons/karwia-logo.webp';
 
 function getScale(zoom: number): number {
   return Math.max(0.55, Math.min(2.2, Math.pow(1.38, zoom - 17)));
@@ -140,6 +142,7 @@ export default function MapComponent({
   interactive = true,
   userAvatarUrl,
   onMapReady,
+  onUserLocation,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<import('leaflet').Map | null>(null);
@@ -182,30 +185,59 @@ export default function MapComponent({
         map.on('click', (e) => onMapClick(e.latlng.lat, e.latlng.lng));
       }
 
-      // User GPS dot — photo avatar if available, else blue placeholder
+      // User GPS dot — watchPosition keeps GPS warm for instant button responses.
+      // Auto-pan only on first fix, and only if user is within 50 km of Karwia.
+      // Subsequent fixes silently move the marker without touching the map view.
       if (showUserLocation && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
+        let userMarker: import('leaflet').Marker | null = null;
+        let firstFix = true;
+
+        const buildUserIcon = (avatarUrl?: string | null) => {
+          const inner = avatarUrl
+            ? `<div style="width:28px;height:28px;border-radius:50%;overflow:hidden;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);background:#ddd">
+                 <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+               </div>`
+            : `<div style="width:28px;height:28px;border-radius:50%;background:#4A90E2;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                 </svg>
+               </div>`;
+          return L.divIcon({
+            html: `<div style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3))">${inner}</div>`,
+            iconSize: [28, 28], iconAnchor: [14, 14], className: '',
+          });
+        };
+
+        const watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude, longitude } = pos.coords;
-            const avatarHtml = userAvatarUrl
-              ? `<div style="width:28px;height:28px;border-radius:50%;overflow:hidden;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);background:#ddd">
-                   <img src="${userAvatarUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" />
-                 </div>`
-              : `<div style="width:28px;height:28px;border-radius:50%;background:#4A90E2;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
-                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                     <circle cx="12" cy="7" r="4"/>
-                   </svg>
-                 </div>`;
-            const userIcon = L.divIcon({
-              html: `<div style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3))">${avatarHtml}</div>`,
-              iconSize: [28, 28], iconAnchor: [14, 14], className: '',
-            });
-            L.marker([latitude, longitude], { icon: userIcon }).addTo(map);
-            map.setView([latitude, longitude], map.getZoom());
+
+            // Add / move user marker
+            if (!userMarker) {
+              userMarker = L.marker([latitude, longitude], { icon: buildUserIcon(userAvatarUrl), zIndexOffset: -100 }).addTo(map);
+            } else {
+              userMarker.setLatLng([latitude, longitude]);
+            }
+
+            // Auto-pan ONCE on first GPS fix — always, regardless of distance
+            if (firstFix) {
+              firstFix = false;
+              map.setView([latitude, longitude], map.getZoom());
+            }
+
+            // Always report position to caller (used by page buttons)
+            onUserLocation?.(latitude, longitude);
           },
           () => {},
+          { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
         );
+
+        // Clean up watcher when component unmounts
+        const origRemove = map.remove.bind(map);
+        map.remove = () => {
+          navigator.geolocation.clearWatch(watchId);
+          return origRemove();
+        };
       }
 
       // Build markers
@@ -243,7 +275,21 @@ export default function MapComponent({
       if (onMapReady) {
         onMapReady({
           panTo(lat, lng, z) {
-            map.flyTo([lat, lng], z ?? map.getZoom(), { duration: 0.9 });
+            const c = map.getCenter();
+            const dLat = lat - c.lat;
+            const dLng = lng - c.lng;
+            const approxKm = Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+
+            if (approxKm < 0.3) {
+              // Already basically there — gentle pan, no zoom change
+              map.panTo([lat, lng], { animate: true, duration: 0.3 });
+            } else if (approxKm < 2) {
+              // Nearby — quick smooth fly
+              map.flyTo([lat, lng], z ?? map.getZoom(), { duration: 0.5 });
+            } else {
+              // Far — full dramatic fly with zoom
+              map.flyTo([lat, lng], z ?? 15, { duration: 1.1 });
+            }
           },
           openBuilding(id) {
             const entry = markersRef.current.find((e) => e.building.id === id);
