@@ -46,14 +46,8 @@ export default function BuildingCard({
             <div className="w-full h-full flex items-center justify-center text-5xl">🏠</div>
           )
         ) : undiscoveredSrc ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={undiscoveredSrc} alt="" className="w-full h-full object-cover grayscale" />
-            <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center gap-1">
-              <Lock size={28} className="text-white/90" />
-              <span className="text-xs text-white/80 font-semibold">Nieodkryte</span>
-            </div>
-          </>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={undiscoveredSrc} alt="" className="w-full h-full object-cover grayscale" />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-100">
             <Lock size={32} className="text-gray-400" />
