@@ -13,8 +13,12 @@ export const metadata: Metadata = {
   description: 'Odkryj tajemnice nadmorskiej Karwi! Skanuj kody QR przy budynkach i zbieraj odznaki odkrywcy.',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icons/icon-192.png',
+    icon: [
+      { url: '/icons/karwia-logo.webp', type: 'image/webp' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
     apple: '/icons/icon-192.png',
+    shortcut: '/icons/karwia-logo.webp',
   },
   openGraph: {
     title: 'Karwia – Gra Terenowa',

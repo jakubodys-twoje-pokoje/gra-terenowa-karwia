@@ -225,9 +225,9 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
             setUploadError(apiErr ?? 'Błąd serwera przy uploading');
             setAvatarUrl(user.avatarUrl ?? null);
           } else {
-            // Set real URL BEFORE revoking the preview blob
+            // Set real URL, then revoke the preview blob after React has re-rendered
             setAvatarUrl(`${url}?t=${Date.now()}`);
-            URL.revokeObjectURL(preview);
+            setTimeout(() => URL.revokeObjectURL(preview), 2000);
             const saveRes = await fetch('/api/profil', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
@@ -242,12 +242,12 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
             }
           }
         } catch {
-          URL.revokeObjectURL(preview);
+          setTimeout(() => URL.revokeObjectURL(preview), 100);
           setUploadError('Nieprawidłowa odpowiedź serwera');
           setAvatarUrl(user.avatarUrl ?? null);
         }
       } else {
-        URL.revokeObjectURL(preview);
+        setTimeout(() => URL.revokeObjectURL(preview), 100);
         let msg = `Błąd uploadu (${xhr.status})`;
         try { const d = JSON.parse(xhr.responseText); msg = d.error ?? msg; } catch { /* ignore */ }
         setUploadError(msg);
@@ -405,59 +405,73 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
         </button>
       </form>
 
-      {/* ── Zmiana hasła ──────────────────────────────────────────────────── */}
-      <div className="mt-6 border border-gray-100 rounded-3xl overflow-hidden">
+      {/* ── Zmiana hasła — button ─────────────────────────────────────────── */}
+      <div className="mt-6 mb-0">
         <button
           type="button"
-          onClick={() => { setShowChangePw((v) => !v); setPwError(''); }}
-          className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-semibold text-gray-700"
+          onClick={() => { setShowChangePw(true); setPwError(''); setPwForm({ current: '', next: '', confirm: '' }); }}
+          className="w-full flex items-center justify-center gap-2 text-ocean-600 border border-ocean-200 bg-ocean-50 py-3 rounded-2xl text-sm font-semibold"
         >
-          <span className="flex items-center gap-2"><Key size={15} className="text-ocean-400" /> Zmień hasło</span>
-          {pwSaved && <span className="text-green-600 text-xs flex items-center gap-1"><Check size={12} /> Zmieniono!</span>}
+          <Key size={15} /> Zmień hasło
+          {pwSaved && <span className="text-green-600 text-xs flex items-center gap-1 ml-1"><Check size={12} /> Zmieniono!</span>}
         </button>
-        {showChangePw && (
-          <form onSubmit={handleChangePassword} className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
-            <div className="relative">
-              <input type={showCurPw ? 'text' : 'password'} placeholder="Aktualne hasło"
-                value={pwForm.current} onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))}
-                required autoComplete="current-password"
-                className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10" />
-              <button type="button" onClick={() => setShowCurPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                {showCurPw ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+      </div>
+
+      {/* Change password dialog */}
+      {showChangePw && (
+        <div className="fixed inset-0 z-[900] flex items-end justify-center p-4 bg-black/50"
+          onClick={() => setShowChangePw(false)}>
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-ocean-100 flex items-center justify-center shrink-0">
+                <Key size={20} className="text-ocean-500" />
+              </div>
+              <div>
+                <h2 className="font-extrabold text-gray-900 text-base">Zmiana hasła</h2>
+                <p className="text-gray-400 text-xs">Podaj aktualne i nowe hasło</p>
+              </div>
             </div>
-            <div className="relative">
-              <input type={showNewPw ? 'text' : 'password'} placeholder="Nowe hasło (min. 6 znaków)"
-                value={pwForm.next} onChange={(e) => setPwForm((f) => ({ ...f, next: e.target.value }))}
-                required autoComplete="new-password"
-                className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10" />
-              <button type="button" onClick={() => setShowNewPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <div className="relative">
-              <input type={showConfPw ? 'text' : 'password'} placeholder="Powtórz nowe hasło"
-                value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
-                required autoComplete="new-password"
-                className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10" />
-              <button type="button" onClick={() => setShowConfPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                {showConfPw ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {pwError && <p className="text-red-500 text-xs px-1">{pwError}</p>}
-            <div className="flex gap-2 pt-1">
+            <form onSubmit={handleChangePassword} className="space-y-3">
+              <div className="relative">
+                <input type={showCurPw ? 'text' : 'password'} placeholder="Aktualne hasło"
+                  value={pwForm.current} onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))}
+                  required autoComplete="current-password"
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10" />
+                <button type="button" onClick={() => setShowCurPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showCurPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <div className="relative">
+                <input type={showNewPw ? 'text' : 'password'} placeholder="Nowe hasło (min. 6 znaków)"
+                  value={pwForm.next} onChange={(e) => setPwForm((f) => ({ ...f, next: e.target.value }))}
+                  required autoComplete="new-password"
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10" />
+                <button type="button" onClick={() => setShowNewPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <div className="relative">
+                <input type={showConfPw ? 'text' : 'password'} placeholder="Powtórz nowe hasło"
+                  value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
+                  required autoComplete="new-password"
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400 pr-10" />
+                <button type="button" onClick={() => setShowConfPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showConfPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              {pwError && <p className="text-red-500 text-xs px-1">{pwError}</p>}
               <button type="submit" disabled={pwSaving}
-                className="flex-1 bg-ocean-500 text-white py-2.5 rounded-2xl font-bold text-sm disabled:opacity-60">
+                className="w-full bg-ocean-500 text-white py-3 rounded-2xl font-bold text-sm disabled:opacity-60">
                 {pwSaving ? 'Zapisuję…' : 'Zmień hasło'}
               </button>
               <button type="button" onClick={() => setShowChangePw(false)}
-                className="px-4 py-2.5 rounded-2xl text-gray-400 text-sm border border-gray-200">
+                className="w-full py-2.5 rounded-2xl text-gray-400 text-sm">
                 Anuluj
               </button>
-            </div>
-          </form>
-        )}
-      </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ── Usuń konto ────────────────────────────────────────────────────── */}
       <div className="mt-3 mb-2">

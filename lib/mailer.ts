@@ -11,10 +11,17 @@ const transporter = nodemailer.createTransport({
 });
 
 const FROM = process.env.SMTP_FROM ?? 'Karwia Odkrywca <noreply@karwia.pl>';
-const BASE_URL = process.env.APP_BASE_URL ?? 'https://odkrywca.karwia.pl';
 
-export async function sendVerificationEmail(email: string, token: string) {
-  const link = `${BASE_URL}/api/auth/verify?token=${token}`;
+/** Use env var only when it's not localhost; fall back to request origin or hardcoded prod URL. */
+function resolveBaseUrl(requestOrigin?: string): string {
+  const env = process.env.APP_BASE_URL;
+  if (env && !env.includes('localhost') && !env.includes('127.0.0.1')) return env;
+  if (requestOrigin && !requestOrigin.includes('localhost') && !requestOrigin.includes('127.0.0.1')) return requestOrigin;
+  return 'https://odkrywca.karwia.pl';
+}
+
+export async function sendVerificationEmail(email: string, token: string, requestOrigin?: string) {
+  const link = `${resolveBaseUrl(requestOrigin)}/api/auth/verify?token=${token}`;
 
   await transporter.sendMail({
     from: FROM,

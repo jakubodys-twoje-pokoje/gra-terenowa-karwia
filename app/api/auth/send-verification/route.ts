@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   await prisma.emailVerificationToken.create({ data: { userId, token, expiresAt } });
 
   try {
-    await sendVerificationEmail(profile.email, token);
+    await sendVerificationEmail(profile.email, token, req.headers.get('origin') ?? undefined);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('Email send error:', err);

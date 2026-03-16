@@ -190,9 +190,33 @@ export default function MapComponent({
         map.on('click', (e) => onMapClick(e.latlng.lat, e.latlng.lng));
       }
 
-      // User GPS dot — watchPosition keeps GPS warm for instant button responses.
-      // Auto-pan only on first fix, and only if user is within 50 km of Karwia.
-      // Subsequent fixes silently move the marker without touching the map view.
+      // Build markers FIRST — before registering watchPosition, which may fire
+      // synchronously on some mobile browsers (cached GPS position), and could
+      // otherwise prevent building pins from being added if it throws.
+      const initialScale = getScale(zoom);
+      markersRef.current = [];
+
+      buildings.forEach((b) => {
+        const icon   = makeIcon(L, b, initialScale);
+        const marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
+
+        if (onBuildingClick) {
+          marker.on('click', (e: unknown) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            L.DomEvent.stopPropagation(e as any);
+            onBuildingClick(b.id);
+          });
+        } else {
+          marker.bindPopup(
+            `<strong style="font-family:Kanit,sans-serif">${b.name}</strong>` +
+            (b.discovered ? '<br/><span style="color:#0F5F92;font-size:12px">✓ Odkryty</span>' : ''),
+          );
+        }
+        markersRef.current.push({ marker, building: b });
+      });
+
+      // User GPS dot — registered AFTER building markers so a synchronous GPS
+      // callback (cached position) can never block building pin creation.
       if (showUserLocation && navigator.geolocation) {
         let userMarker: import('leaflet').Marker | null = null;
         let firstFix = true;
@@ -215,58 +239,35 @@ export default function MapComponent({
 
         const watchId = navigator.geolocation.watchPosition(
           (pos) => {
-            const { latitude, longitude } = pos.coords;
+            try {
+              const { latitude, longitude } = pos.coords;
 
-            // Add / move user marker
-            if (!userMarker) {
-              userMarker = L.marker([latitude, longitude], { icon: buildUserIcon(userAvatarUrl), zIndexOffset: -100 }).addTo(map);
-            } else {
-              userMarker.setLatLng([latitude, longitude]);
+              if (!userMarker) {
+                userMarker = L.marker([latitude, longitude], { icon: buildUserIcon(userAvatarUrl), zIndexOffset: -100 }).addTo(map);
+              } else {
+                userMarker.setLatLng([latitude, longitude]);
+              }
+
+              if (firstFix) {
+                firstFix = false;
+                map.setView([latitude, longitude], map.getZoom());
+              }
+
+              onUserLocation?.(latitude, longitude);
+            } catch {
+              // Never let GPS marker errors propagate — building pins must stay intact
             }
-
-            // Auto-pan ONCE on first GPS fix — always, regardless of distance
-            if (firstFix) {
-              firstFix = false;
-              map.setView([latitude, longitude], map.getZoom());
-            }
-
-            // Always report position to caller (used by page buttons)
-            onUserLocation?.(latitude, longitude);
           },
           () => {},
           { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
         );
 
-        // Clean up watcher when component unmounts
         const origRemove = map.remove.bind(map);
         map.remove = () => {
           navigator.geolocation.clearWatch(watchId);
           return origRemove();
         };
       }
-
-      // Build markers
-      const initialScale = getScale(zoom);
-      markersRef.current = [];
-
-      buildings.forEach((b) => {
-        const icon   = makeIcon(L, b, initialScale);
-        const marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
-
-        if (onBuildingClick) {
-          marker.on('click', (e: unknown) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            L.DomEvent.stopPropagation(e as any);
-            onBuildingClick(b.id);
-          });
-        } else {
-          marker.bindPopup(
-            `<strong style="font-family:Kanit,sans-serif">${b.name}</strong>` +
-            (b.discovered ? '<br/><span style="color:#0F5F92;font-size:12px">✓ Odkryty</span>' : ''),
-          );
-        }
-        markersRef.current.push({ marker, building: b });
-      });
 
       // Rescale markers on zoom change
       map.on('zoomend', () => {
