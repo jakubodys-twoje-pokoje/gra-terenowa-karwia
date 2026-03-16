@@ -120,8 +120,9 @@ export default function MapComponent({
           iconSize = [50, 60];
           iconAnchor = [25, 60];
         } else {
-          markerHtml = b.outlineImageUrl
-            ? buildOutlinePin(b.outlineImageUrl, 38)
+          const undiscoveredImg = b.outlineImageUrl ?? b.imageUrl;
+          markerHtml = undiscoveredImg
+            ? buildOutlinePin(undiscoveredImg, 38)
             : `<div style="width:28px;height:36px;opacity:0.55;cursor:pointer;">
                 <svg viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
                   <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22S28 24.5 28 14C28 6.27 21.73 0 14 0z" fill="#aaa"/>

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MapPin, Check } from 'lucide-react';
+import { MapPin, Check, Lock } from 'lucide-react';
 import clsx from 'clsx';
 
 const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
@@ -36,18 +36,25 @@ export default function BuildingCard({
     >
       {/* Image */}
       <div className="relative h-40 bg-gradient-to-br from-ocean-200 to-ocean-400 overflow-hidden">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+        {discovered ? (
+          imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-5xl">🏠</div>
+          )
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-5xl">🏠</div>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-100">
+            <Lock size={32} className="text-gray-400" />
+            <span className="text-xs text-gray-400 font-semibold">Nieodkryte</span>
+          </div>
         )}
         {discovered && (
           <div className="absolute top-3 right-3 bg-ocean-500 text-white rounded-full p-1.5 shadow-md">
             <Check size={14} strokeWidth={3} />
           </div>
         )}
-        <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-white to-transparent" />
+        {discovered && <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-white to-transparent" />}
       </div>
 
       {/* Content */}
@@ -56,8 +63,14 @@ export default function BuildingCard({
           {cat.label}
         </span>
         <h3 className="font-bold text-ocean-800 mt-2 leading-snug line-clamp-1">{name}</h3>
-        <p className="text-gray-500 text-sm mt-1 line-clamp-2">{description}</p>
-        {discoveredAt && (
+        {discovered ? (
+          <p className="text-gray-500 text-sm mt-1 line-clamp-2">{description}</p>
+        ) : (
+          <p className="text-gray-400 text-sm mt-1 italic">
+            🔍 Znajdź to miejsce i zeskanuj kod QR, by je odkryć.
+          </p>
+        )}
+        {discoveredAt && discovered && (
           <p className="text-ocean-400 text-xs mt-2 flex items-center gap-1">
             <MapPin size={12} />
             Odkryto {new Date(discoveredAt).toLocaleDateString('pl-PL')}
