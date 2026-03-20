@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    await sendVerificationEmail(email, token, req.headers.get('origin') ?? undefined);
+    await sendVerificationEmail(email, token);
   } catch (err) {
     console.error('Verification email failed:', err);
   }
