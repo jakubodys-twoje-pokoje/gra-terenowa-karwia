@@ -63,6 +63,26 @@ model PageContent {
   updatedAt DateTime @updatedAt
 }
 
+model Category {
+  id    Int    @id @default(autoincrement())
+  value String @unique
+  label String
+  icon  String @default("")
+  order Int    @default(0)
+}
+
+model Achievement {
+  id                Int     @id @default(autoincrement())
+  name              String
+  description       String
+  icon              String  @default("🏆")
+  color             String  @default("#0F5F92")
+  conditionType     String  // total_count | total_all | category_count
+  conditionValue    Int     @default(1)
+  conditionCategory String?
+  order             Int     @default(0)
+}
+
 model EmailVerificationToken {
   id          Int      @id @default(autoincrement())
   userId      String

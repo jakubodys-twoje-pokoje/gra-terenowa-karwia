@@ -3,10 +3,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Trophy } from 'lucide-react';
 import AchievementBadge from '@/components/AchievementBadge';
-import { ACHIEVEMENTS, getUnlockedAchievements } from '@/lib/achievements';
 
-interface Discovery {
-  building: { category: string };
+interface AchievementWithStatus {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  unlocked: boolean;
 }
 
 function getUserId(): string {
@@ -19,24 +23,24 @@ function getUserId(): string {
 }
 
 export default function OsiagnieciaPage() {
-  const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
+  const [achievements, setAchievements] = useState<AchievementWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [discoveredCount, setDiscoveredCount] = useState(0);
   const [totalBuildings, setTotalBuildings] = useState(0);
 
   const load = useCallback(async () => {
     const userId = getUserId();
-    const [discRes, allRes] = await Promise.all([
+    const [achRes, discRes, allRes] = await Promise.all([
+      fetch(`/api/osiagniecia?userId=${userId}`),
       fetch(`/api/odkrycia?userId=${userId}`),
       fetch('/api/budynki'),
     ]);
 
-    const discoveries: Discovery[] = discRes.ok ? await discRes.json() : [];
+    const fetchedAchievements: AchievementWithStatus[] = achRes.ok ? await achRes.json() : [];
+    const discoveries = discRes.ok ? await discRes.json() : [];
     const allBuildings = allRes.ok ? await allRes.json() : [];
 
-    const categories = discoveries.map((d) => d.building.category);
-    const unlocked = getUnlockedAchievements(discoveries.length, allBuildings.length, categories);
-    setUnlockedIds(new Set(unlocked.map((a) => a.id)));
+    setAchievements(fetchedAchievements);
     setDiscoveredCount(discoveries.length);
     setTotalBuildings(allBuildings.length);
     setLoading(false);
@@ -44,8 +48,8 @@ export default function OsiagnieciaPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const unlockedCount = unlockedIds.size;
-  const progress = ACHIEVEMENTS.length > 0 ? (unlockedCount / ACHIEVEMENTS.length) * 100 : 0;
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+  const progress = achievements.length > 0 ? (unlockedCount / achievements.length) * 100 : 0;
 
   return (
     <div className="px-4 pt-6">
@@ -57,7 +61,7 @@ export default function OsiagnieciaPage() {
         <div>
           <h1 className="text-xl font-extrabold text-ocean-900">Moje Osiągnięcia</h1>
           <p className="text-gray-500 text-xs">
-            {loading ? '…' : `${unlockedCount} z ${ACHIEVEMENTS.length} odblokowanych`}
+            {loading ? '…' : `${unlockedCount} z ${achievements.length} odblokowanych`}
           </p>
         </div>
       </div>
@@ -81,7 +85,7 @@ export default function OsiagnieciaPage() {
           <div className="flex justify-between text-sm mt-3">
             <span className="text-gray-500 font-medium">Odznaki</span>
             <span className="font-bold text-sand-600">
-              {unlockedCount} / {ACHIEVEMENTS.length}
+              {unlockedCount} / {achievements.length}
             </span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden mt-2">
@@ -102,16 +106,19 @@ export default function OsiagnieciaPage() {
       {/* Achievements grid */}
       {!loading && (
         <div className="grid grid-cols-2 gap-3 pb-4">
-          {ACHIEVEMENTS.map((a) => (
+          {achievements.map((a) => (
             <AchievementBadge
               key={a.id}
               icon={a.icon}
               name={a.name}
               description={a.description}
               color={a.color}
-              unlocked={unlockedIds.has(a.id)}
+              unlocked={a.unlocked}
             />
           ))}
+          {achievements.length === 0 && (
+            <p className="col-span-2 text-center text-gray-400 text-sm py-10">Brak osiągnięć</p>
+          )}
         </div>
       )}
     </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle, Tag, Trophy } from 'lucide-react';
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
@@ -21,6 +21,18 @@ interface UserEntry {
   city: string | null; avatarUrl: string | null;
   emailVerified: boolean; registeredAt: string; discoveryCount: number;
 }
+
+interface CategoryEntry { id: number; value: string; label: string; icon: string; order: number; }
+interface AchievementEntry { id: number; name: string; description: string; icon: string; color: string; conditionType: string; conditionValue: number; conditionCategory: string | null; order: number; }
+
+const CONDITION_TYPES = [
+  { value: 'total_count',    label: 'Liczba odkryć (≥ N)' },
+  { value: 'total_all',      label: 'Odkryj wszystkie' },
+  { value: 'category_count', label: 'Odkrycia kategorii (≥ N)' },
+];
+
+const EMPTY_CAT_FORM = { value: '', label: '', icon: '', order: 0 };
+const EMPTY_ACH_FORM = { name: '', description: '', icon: '🏆', color: '#0F5F92', conditionType: 'total_count', conditionValue: 1, conditionCategory: '', order: 0 };
 
 const CATEGORIES = [
   { value: 'beach',      label: '🏖️ Plaża' },
@@ -42,7 +54,7 @@ const EMPTY_FORM = {
 export default function AdminPage() {
   const [password, setPassword]     = useState('');
   const [authed, setAuthed]         = useState(false);
-  const [activeTab, setActiveTab]   = useState<'budynki' | 'uzytkownicy' | 'tresci'>('budynki');
+  const [activeTab, setActiveTab]   = useState<'budynki' | 'uzytkownicy' | 'tresci' | 'kategorie' | 'osiagniecia'>('budynki');
   const [contentReg, setContentReg]   = useState('');
   const [contentPol, setContentPol]   = useState('');
   const [contentSaving, setContentSaving] = useState<string | null>(null);
@@ -59,6 +71,18 @@ export default function AdminPage() {
   const [showForm, setShowForm]     = useState(false);
   const [pickingCoords, setPickingCoords] = useState(false);
   const formRef    = useRef<HTMLDivElement>(null);
+
+  // ── Categories state ─────────────────────────────────────────────────────────
+  const [categories, setCategories]     = useState<CategoryEntry[]>([]);
+  const [editingCatId, setEditingCatId] = useState<number | null>(null);
+  const [catForm, setCatForm]           = useState(EMPTY_CAT_FORM);
+  const [showCatForm, setShowCatForm]   = useState(false);
+
+  // ── Achievements state ───────────────────────────────────────────────────────
+  const [achievements, setAchievements]   = useState<AchievementEntry[]>([]);
+  const [editingAchId, setEditingAchId]   = useState<number | null>(null);
+  const [achForm, setAchForm]             = useState(EMPTY_ACH_FORM);
+  const [showAchForm, setShowAchForm]     = useState(false);
 
   // ── CSV import ──────────────────────────────────────────────────────────────
   type CsvStatus = 'pending' | 'importing' | 'ok' | string; // string = error msg
@@ -163,6 +187,16 @@ export default function AdminPage() {
     if (res.ok) { const d = await res.json(); setUsers(d.users); setGuestCount(d.guestCount); }
   }, []);
 
+  const loadCategories = useCallback(async (pwd: string) => {
+    const res = await fetch('/api/admin/categories', { headers: { 'x-admin-password': pwd } });
+    if (res.ok) setCategories(await res.json());
+  }, []);
+
+  const loadAchievements = useCallback(async (pwd: string) => {
+    const res = await fetch('/api/admin/achievements', { headers: { 'x-admin-password': pwd } });
+    if (res.ok) setAchievements(await res.json());
+  }, []);
+
   const loadContent = useCallback(async () => {
     const [r, p] = await Promise.all([
       fetch('/api/content?key=regulamin').then((x) => x.json()),
@@ -188,8 +222,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem('admin_pass');
-    if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); loadContent(); }
-  }, [loadBuildings, loadUsers, loadContent]);
+    if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); loadContent(); loadCategories(stored); loadAchievements(stored); }
+  }, [loadBuildings, loadUsers, loadContent, loadCategories, loadAchievements]);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,6 +232,8 @@ export default function AdminPage() {
     loadBuildings(password);
     loadUsers(password);
     loadContent();
+    loadCategories(password);
+    loadAchievements(password);
   };
 
   const handleMapClick = (lat: number, lng: number) => {
@@ -241,6 +277,53 @@ export default function AdminPage() {
 
   const flash = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); };
 
+  // ── Category CRUD ────────────────────────────────────────────────────────────
+  const cancelCatForm = () => { setCatForm(EMPTY_CAT_FORM); setEditingCatId(null); setShowCatForm(false); setFormError(''); };
+
+  const handleCatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); setFormError('');
+    const url    = editingCatId ? `/api/admin/categories/${editingCatId}` : '/api/admin/categories';
+    const method = editingCatId ? 'PUT' : 'POST';
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(catForm) });
+    if (res.ok) { flash(editingCatId ? 'Kategoria zaktualizowana!' : 'Kategoria dodana!'); cancelCatForm(); loadCategories(password); }
+    else { const err = await res.json(); setFormError(err.error || 'Błąd zapisu'); }
+  };
+
+  const handleCatEdit = (c: CategoryEntry) => {
+    setCatForm({ value: c.value, label: c.label, icon: c.icon, order: c.order });
+    setEditingCatId(c.id); setShowCatForm(true);
+  };
+
+  const handleCatDelete = async (id: number, label: string) => {
+    if (!confirm(`Usunąć kategorię "${label}"?`)) return;
+    const res = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE', headers: { 'x-admin-password': password } });
+    if (res.ok) { setCategories((prev) => prev.filter((c) => c.id !== id)); flash('Kategoria usunięta'); }
+  };
+
+  // ── Achievement CRUD ─────────────────────────────────────────────────────────
+  const cancelAchForm = () => { setAchForm(EMPTY_ACH_FORM); setEditingAchId(null); setShowAchForm(false); setFormError(''); };
+
+  const handleAchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); setFormError('');
+    const body = { ...achForm, conditionValue: Number(achForm.conditionValue), conditionCategory: achForm.conditionCategory || null };
+    const url    = editingAchId ? `/api/admin/achievements/${editingAchId}` : '/api/admin/achievements';
+    const method = editingAchId ? 'PUT' : 'POST';
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
+    if (res.ok) { flash(editingAchId ? 'Osiągnięcie zaktualizowane!' : 'Osiągnięcie dodane!'); cancelAchForm(); loadAchievements(password); }
+    else { const err = await res.json(); setFormError(err.error || 'Błąd zapisu'); }
+  };
+
+  const handleAchEdit = (a: AchievementEntry) => {
+    setAchForm({ name: a.name, description: a.description, icon: a.icon, color: a.color, conditionType: a.conditionType, conditionValue: a.conditionValue, conditionCategory: a.conditionCategory ?? '', order: a.order });
+    setEditingAchId(a.id); setShowAchForm(true);
+  };
+
+  const handleAchDelete = async (id: number, name: string) => {
+    if (!confirm(`Usunąć osiągnięcie "${name}"?`)) return;
+    const res = await fetch(`/api/admin/achievements/${id}`, { method: 'DELETE', headers: { 'x-admin-password': password } });
+    if (res.ok) { setAchievements((prev) => prev.filter((a) => a.id !== id)); flash('Osiągnięcie usunięte'); }
+  };
+
   const cancelForm = () => { setForm(EMPTY_FORM); setGallery([]); setEditingId(null); setShowForm(false); setFormError(''); };
 
   const mapBuildings = buildings.map((b) => ({ id: b.id, name: b.name, lat: b.lat, lng: b.lng, discovered: true }));
@@ -279,18 +362,18 @@ export default function AdminPage() {
           </div>
           {/* Tabs inline in header on desktop */}
           <div className="hidden md:flex bg-gray-100 rounded-xl p-0.5 gap-0.5">
-            <button onClick={() => setActiveTab('budynki')}
-              className={clsx('flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all', activeTab === 'budynki' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
-              <Building2 size={13} /> Budynki
-            </button>
-            <button onClick={() => setActiveTab('uzytkownicy')}
-              className={clsx('flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all', activeTab === 'uzytkownicy' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
-              <Users size={13} /> Użytkownicy
-            </button>
-            <button onClick={() => setActiveTab('tresci')}
-              className={clsx('flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all', activeTab === 'tresci' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
-              <FileText size={13} /> Treści
-            </button>
+            {([
+              ['budynki',     <Building2 key="b" size={13} />, 'Budynki'],
+              ['uzytkownicy', <Users     key="u" size={13} />, 'Użytkownicy'],
+              ['tresci',      <FileText  key="t" size={13} />, 'Treści'],
+              ['kategorie',   <Tag       key="k" size={13} />, 'Kategorie'],
+              ['osiagniecia', <Trophy    key="o" size={13} />, 'Osiągnięcia'],
+            ] as [string, React.ReactNode, string][]).map(([tab, icon, label]) => (
+              <button key={tab} onClick={() => setActiveTab(tab as typeof activeTab)}
+                className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all', activeTab === tab ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
+                {icon} {label}
+              </button>
+            ))}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -305,6 +388,18 @@ export default function AdminPage() {
               <Plus size={15} /> Dodaj budynek
             </button>
           </>)}
+          {activeTab === 'kategorie' && (
+            <button onClick={() => { cancelCatForm(); setShowCatForm(true); }}
+              className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-ocean-600 transition">
+              <Plus size={15} /> Dodaj kategorię
+            </button>
+          )}
+          {activeTab === 'osiagniecia' && (
+            <button onClick={() => { cancelAchForm(); setShowAchForm(true); }}
+              className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-ocean-600 transition">
+              <Plus size={15} /> Dodaj osiągnięcie
+            </button>
+          )}
           <button onClick={() => { sessionStorage.removeItem('admin_pass'); setAuthed(false); }}
             className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title="Wyloguj">
             <LogOut size={18} />
@@ -312,17 +407,20 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Mobile tabs */}
-      <div className="md:hidden flex bg-gray-100 rounded-xl p-0.5 gap-0.5 mx-4 my-3 shrink-0">
-        <button onClick={() => setActiveTab('budynki')} className={clsx('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all', activeTab === 'budynki' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400')}>
-          <Building2 size={13} /> Budynki
-        </button>
-        <button onClick={() => setActiveTab('uzytkownicy')} className={clsx('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all', activeTab === 'uzytkownicy' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400')}>
-          <Users size={13} /> Użytkownicy
-        </button>
-        <button onClick={() => setActiveTab('tresci')} className={clsx('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all', activeTab === 'tresci' ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400')}>
-          <FileText size={13} /> Treści
-        </button>
+      {/* Mobile tabs – scrollable */}
+      <div className="md:hidden flex bg-gray-100 rounded-xl p-0.5 gap-0.5 mx-4 my-3 shrink-0 overflow-x-auto">
+        {([
+          ['budynki',     <Building2 key="b" size={12} />, 'Budynki'],
+          ['uzytkownicy', <Users     key="u" size={12} />, 'Użytkownicy'],
+          ['tresci',      <FileText  key="t" size={12} />, 'Treści'],
+          ['kategorie',   <Tag       key="k" size={12} />, 'Kategorie'],
+          ['osiagniecia', <Trophy    key="o" size={12} />, 'Osiągnięcia'],
+        ] as [string, React.ReactNode, string][]).map(([tab, icon, label]) => (
+          <button key={tab} onClick={() => setActiveTab(tab as typeof activeTab)}
+            className={clsx('flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold transition-all', activeTab === tab ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400')}>
+            {icon} {label}
+          </button>
+        ))}
       </div>
 
       {/* Success banner */}
@@ -424,7 +522,9 @@ export default function AdminPage() {
                 <input placeholder="Adres (opcjonalnie)" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} className="input" />
 
                 <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className="input">
-                  {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  {(categories.length > 0 ? categories : CATEGORIES).map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
                 </select>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -582,6 +682,173 @@ export default function AdminPage() {
                   </div>
                 ))}
                 {users.length === 0 && <div className="text-center py-10 text-gray-400 text-sm">Brak zarejestrowanych użytkowników</div>}
+              </div>
+            </div>
+          )}
+
+          {/* ── OSIĄGNIĘCIA ── */}
+          {activeTab === 'osiagniecia' && (
+            <div className="px-4 py-4 space-y-4">
+              {showAchForm && (
+                <div className="bg-white rounded-2xl shadow-sm p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-bold text-ocean-900">{editingAchId ? 'Edytuj osiągnięcie' : 'Nowe osiągnięcie'}</h2>
+                    <button onClick={cancelAchForm} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                  </div>
+                  <form onSubmit={handleAchSubmit} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Ikona (emoji)</label>
+                        <input placeholder="🏆" value={achForm.icon} onChange={(e) => setAchForm((f) => ({ ...f, icon: e.target.value }))} className="input text-2xl text-center" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Kolor (hex)</label>
+                        <div className="flex gap-2 items-center">
+                          <input type="color" value={achForm.color} onChange={(e) => setAchForm((f) => ({ ...f, color: e.target.value }))} className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5 shrink-0" />
+                          <input value={achForm.color} onChange={(e) => setAchForm((f) => ({ ...f, color: e.target.value }))} className="input flex-1 font-mono text-xs" />
+                        </div>
+                      </div>
+                    </div>
+                    <input required placeholder="Nazwa osiągnięcia" value={achForm.name} onChange={(e) => setAchForm((f) => ({ ...f, name: e.target.value }))} className="input" />
+                    <textarea placeholder="Opis (widoczny dla gracza)" rows={2} value={achForm.description} onChange={(e) => setAchForm((f) => ({ ...f, description: e.target.value }))} className="input resize-none" />
+
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Warunek odblokowania</label>
+                      <select value={achForm.conditionType} onChange={(e) => setAchForm((f) => ({ ...f, conditionType: e.target.value }))} className="input">
+                        {CONDITION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
+                    </div>
+
+                    {achForm.conditionType !== 'total_all' && (
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Wymagana liczba (N)</label>
+                        <input type="number" min={1} value={achForm.conditionValue} onChange={(e) => setAchForm((f) => ({ ...f, conditionValue: Number(e.target.value) }))} className="input" />
+                      </div>
+                    )}
+
+                    {achForm.conditionType === 'category_count' && (
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Kategoria</label>
+                        <select value={achForm.conditionCategory} onChange={(e) => setAchForm((f) => ({ ...f, conditionCategory: e.target.value }))} className="input">
+                          <option value="">— wybierz —</option>
+                          {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Kolejność na liście</label>
+                      <input type="number" value={achForm.order} onChange={(e) => setAchForm((f) => ({ ...f, order: Number(e.target.value) }))} className="input" />
+                    </div>
+
+                    {/* Preview */}
+                    <div className="border border-gray-100 rounded-xl p-3 bg-gray-50">
+                      <p className="text-xs text-gray-400 mb-2">Podgląd odznaki</p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style={{ background: `${achForm.color}22` }}>
+                          {achForm.icon || '🏆'}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm" style={{ color: achForm.color }}>{achForm.name || 'Nazwa osiągnięcia'}</p>
+                          <p className="text-gray-400 text-xs">{achForm.description || 'Opis osiągnięcia'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {formError && <p className="text-red-500 text-sm">{formError}</p>}
+                    <div className="flex gap-2 pt-1">
+                      <button type="submit" className="flex-1 bg-ocean-500 text-white py-3 rounded-xl font-bold text-sm hover:bg-ocean-600 transition">
+                        {editingAchId ? 'Zapisz zmiany' : 'Dodaj osiągnięcie'}
+                      </button>
+                      <button type="button" onClick={cancelAchForm} className="px-4 py-3 rounded-xl border border-gray-200 text-gray-500 text-sm hover:bg-gray-50">Anuluj</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {achievements.map((a) => (
+                  <div key={a.id} className="bg-white rounded-xl shadow-sm p-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0" style={{ background: `${a.color}22` }}>{a.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm" style={{ color: a.color }}>{a.name}</p>
+                      <p className="text-gray-400 text-xs truncate">{a.description}</p>
+                      <p className="text-gray-300 text-xs mt-0.5">
+                        {a.conditionType === 'total_count' && `Odkryj ≥ ${a.conditionValue} miejsc`}
+                        {a.conditionType === 'total_all'   && 'Odkryj wszystkie miejsca'}
+                        {a.conditionType === 'category_count' && `Kat. "${a.conditionCategory}" ≥ ${a.conditionValue}`}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => handleAchEdit(a)} className="p-1.5 rounded-lg bg-ocean-50 text-ocean-500 hover:bg-ocean-100 transition"><Edit3 size={14} /></button>
+                      <button onClick={() => handleAchDelete(a.id, a.name)} className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+                {achievements.length === 0 && (
+                  <div className="text-center py-10 text-gray-400 text-sm">Brak osiągnięć — kliknij &quot;Dodaj osiągnięcie&quot;</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── KATEGORIE ── */}
+          {activeTab === 'kategorie' && (
+            <div className="px-4 py-4 space-y-4">
+              {showCatForm && (
+                <div className="bg-white rounded-2xl shadow-sm p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-bold text-ocean-900">{editingCatId ? 'Edytuj kategorię' : 'Nowa kategoria'}</h2>
+                    <button onClick={cancelCatForm} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                  </div>
+                  <form onSubmit={handleCatSubmit} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Ikona (emoji)</label>
+                        <input placeholder="🏖️" value={catForm.icon} onChange={(e) => setCatForm((f) => ({ ...f, icon: e.target.value }))} className="input text-2xl text-center" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Kolejność</label>
+                        <input type="number" value={catForm.order} onChange={(e) => setCatForm((f) => ({ ...f, order: Number(e.target.value) }))} className="input" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Identyfikator (np. beach)</label>
+                      <input required placeholder="beach" value={catForm.value} onChange={(e) => setCatForm((f) => ({ ...f, value: e.target.value.toLowerCase().replace(/\s/g, '_') }))} className="input font-mono" disabled={!!editingCatId} />
+                      {editingCatId && <p className="text-xs text-gray-400 mt-1">Identyfikator nie może być zmieniany po utworzeniu</p>}
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Etykieta (np. 🏖️ Plaża)</label>
+                      <input required placeholder="🏖️ Plaża" value={catForm.label} onChange={(e) => setCatForm((f) => ({ ...f, label: e.target.value }))} className="input" />
+                    </div>
+                    {formError && <p className="text-red-500 text-sm">{formError}</p>}
+                    <div className="flex gap-2 pt-1">
+                      <button type="submit" className="flex-1 bg-ocean-500 text-white py-3 rounded-xl font-bold text-sm hover:bg-ocean-600 transition">
+                        {editingCatId ? 'Zapisz zmiany' : 'Dodaj kategorię'}
+                      </button>
+                      <button type="button" onClick={cancelCatForm} className="px-4 py-3 rounded-xl border border-gray-200 text-gray-500 text-sm hover:bg-gray-50">Anuluj</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {categories.map((c) => (
+                  <div key={c.id} className="bg-white rounded-xl shadow-sm p-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-ocean-50 flex items-center justify-center text-xl shrink-0">{c.icon || '🏷️'}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-ocean-900 text-sm">{c.label}</p>
+                      <p className="text-gray-400 text-xs font-mono">{c.value} · kolejność: {c.order}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => handleCatEdit(c)} className="p-1.5 rounded-lg bg-ocean-50 text-ocean-500 hover:bg-ocean-100 transition"><Edit3 size={14} /></button>
+                      <button onClick={() => handleCatDelete(c.id, c.label)} className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+                {categories.length === 0 && (
+                  <div className="text-center py-10 text-gray-400 text-sm">Brak kategorii — kliknij &quot;Dodaj kategorię&quot;</div>
+                )}
               </div>
             </div>
           )}
