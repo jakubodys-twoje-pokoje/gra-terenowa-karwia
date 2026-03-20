@@ -357,8 +357,10 @@ export default function AdminPage() {
 
               {/* legend */}
               <p className="text-xs text-gray-400 mb-2">
-                Wymagane kolumny: <code className="bg-gray-100 px-1 rounded">name, description, lat, lng, qrUrl</code>
-                &nbsp;· gallery = URL-e oddzielone <code className="bg-gray-100 px-1 rounded">|</code>
+                Wymagane: <code className="bg-gray-100 px-1 rounded">name, description, lat, lng, qrUrl</code><br />
+                Zdjęcia: <code className="bg-gray-100 px-1 rounded">imageUrl</code> (okładka) &nbsp;·&nbsp;
+                <code className="bg-gray-100 px-1 rounded">outlineImageUrl</code> (sylwetka nieodkrytego) &nbsp;·&nbsp;
+                <code className="bg-gray-100 px-1 rounded">gallery</code> (URL-e oddzielone <code className="bg-gray-100 px-1 rounded">|</code>)
               </p>
 
               <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-100">
