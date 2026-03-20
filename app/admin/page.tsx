@@ -13,6 +13,7 @@ interface Building {
   id: number; name: string; description: string; address?: string;
   lat: number; lng: number; imageUrl?: string; outlineImageUrl?: string;
   qrUrl: string; category: string; images: BuildingImage[];
+  hidden: boolean; published: boolean;
 }
 
 interface UserEntry {
@@ -34,6 +35,7 @@ const EMPTY_FORM = {
   name: '', description: '', address: '',
   lat: '54.7505', lng: '17.8670',
   imageUrl: '', outlineImageUrl: '', qrUrl: '', category: 'landmark',
+  hidden: false, published: true,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -128,7 +130,7 @@ export default function AdminPage() {
   };
 
   const handleEdit = (b: Building) => {
-    setForm({ name: b.name, description: b.description, address: b.address ?? '', lat: String(b.lat), lng: String(b.lng), imageUrl: b.imageUrl ?? '', outlineImageUrl: b.outlineImageUrl ?? '', qrUrl: b.qrUrl, category: b.category });
+    setForm({ name: b.name, description: b.description, address: b.address ?? '', lat: String(b.lat), lng: String(b.lng), imageUrl: b.imageUrl ?? '', outlineImageUrl: b.outlineImageUrl ?? '', qrUrl: b.qrUrl, category: b.category, hidden: b.hidden, published: b.published });
     setGallery(b.images.map((i) => i.url));
     setEditingId(b.id); setShowForm(true);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -299,6 +301,36 @@ export default function AdminPage() {
                   ))}
                 </div>
 
+                {/* Toggles */}
+                <div className="border border-gray-200 rounded-xl p-3 space-y-2.5">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div>
+                      <p className="text-sm font-semibold text-ocean-900">Opublikowany</p>
+                      <p className="text-xs text-gray-400">Draft nie pojawia się publicznie</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, published: !f.published }))}
+                      className={clsx('relative inline-flex w-10 h-6 rounded-full transition-colors duration-200 shrink-0', form.published ? 'bg-ocean-500' : 'bg-gray-300')}
+                    >
+                      <span className={clsx('absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200', form.published ? 'translate-x-4' : 'translate-x-0')} />
+                    </button>
+                  </label>
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div>
+                      <p className="text-sm font-semibold text-ocean-900">Ukryj na mapie</p>
+                      <p className="text-xs text-gray-400">Widoczny dopiero po zeskanowaniu QR</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, hidden: !f.hidden }))}
+                      className={clsx('relative inline-flex w-10 h-6 rounded-full transition-colors duration-200 shrink-0', form.hidden ? 'bg-amber-500' : 'bg-gray-300')}
+                    >
+                      <span className={clsx('absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200', form.hidden ? 'translate-x-4' : 'translate-x-0')} />
+                    </button>
+                  </label>
+                </div>
+
                 {formError && <p className="text-red-500 text-sm">{formError}</p>}
 
                 <div className="flex gap-2 pt-1">
@@ -329,7 +361,11 @@ export default function AdminPage() {
                           : <div className="w-full h-full flex items-center justify-center text-xl">🏛️</div>}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-ocean-900 text-sm truncate">{b.name}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold text-ocean-900 text-sm truncate">{b.name}</p>
+                          {!b.published && <span className="shrink-0 text-[10px] font-bold bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">draft</span>}
+                          {b.hidden && <span className="shrink-0 text-[10px] font-bold bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full">ukryty</span>}
+                        </div>
                         <p className="text-gray-400 text-xs truncate">{b.qrUrl}</p>
                         <p className="text-gray-300 text-xs">{b.lat.toFixed(4)}, {b.lng.toFixed(4)}
                           {b.images.length > 0 && <span className="text-ocean-400 ml-1.5"><Images size={10} className="inline" /> {b.images.length}</span>}

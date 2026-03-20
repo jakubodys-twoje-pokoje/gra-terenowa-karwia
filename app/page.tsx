@@ -19,6 +19,7 @@ interface Building {
   imageUrl: string | null;
   outlineImageUrl: string | null;
   category: string;
+  hidden: boolean;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -161,11 +162,13 @@ export default function MapPage() {
     );
   };
 
-  const mapBuildings: MapBuilding[] = buildings.map((b) => ({
-    id: b.id, name: b.name, lat: b.lat, lng: b.lng,
-    discovered: discoveredIds.has(b.id),
-    imageUrl: b.imageUrl, outlineImageUrl: b.outlineImageUrl,
-  }));
+  const mapBuildings: MapBuilding[] = buildings
+    .filter((b) => !b.hidden || discoveredIds.has(b.id))
+    .map((b) => ({
+      id: b.id, name: b.name, lat: b.lat, lng: b.lng,
+      discovered: discoveredIds.has(b.id),
+      imageUrl: b.imageUrl, outlineImageUrl: b.outlineImageUrl,
+    }));
 
   const isDiscovered = selected ? discoveredIds.has(selected.id) : false;
 

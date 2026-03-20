@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const isAdmin = req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD;
+  const where = isAdmin ? {} : { published: true };
+
   try {
     const buildings = await prisma.building.findMany({
+      where,
       orderBy: { name: 'asc' },
       select: {
         id: true, name: true, description: true, address: true,
-        lat: true, lng: true, imageUrl: true, outlineImageUrl: true, category: true, qrUrl: true,
+        lat: true, lng: true, imageUrl: true, outlineImageUrl: true,
+        category: true, qrUrl: true, hidden: true, published: true,
         images: { orderBy: { order: 'asc' }, select: { id: true, url: true, order: true } },
       },
     });
@@ -15,10 +20,12 @@ export async function GET() {
   } catch {
     // Fallback: BuildingImage table may not exist yet on server (run prisma db push)
     const buildings = await prisma.building.findMany({
+      where,
       orderBy: { name: 'asc' },
       select: {
         id: true, name: true, description: true, address: true,
-        lat: true, lng: true, imageUrl: true, outlineImageUrl: true, category: true, qrUrl: true,
+        lat: true, lng: true, imageUrl: true, outlineImageUrl: true,
+        category: true, qrUrl: true, hidden: true, published: true,
       },
     });
     return NextResponse.json(buildings.map((b) => ({ ...b, images: [] })));
@@ -32,7 +39,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery } = body;
+  const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
 
   if (!name || !description || lat == null || lng == null || !qrUrl) {
     return NextResponse.json({ error: 'Brakujące pola' }, { status: 400 });
@@ -43,6 +50,8 @@ export async function POST(req: NextRequest) {
       data: {
         name, description, address, lat: Number(lat), lng: Number(lng),
         imageUrl, outlineImageUrl, qrUrl, category: category || 'landmark',
+        hidden: hidden ?? false,
+        published: published ?? true,
         images: {
           create: ((gallery as string[] | undefined) ?? [])
             .filter((url) => url.trim())

@@ -7,7 +7,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!building) return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
 
   const all = await prisma.building.findMany({
-    where: { id: { not: building.id } },
+    where: { id: { not: building.id }, published: true },
     select: { id: true, name: true, lat: true, lng: true, category: true, imageUrl: true },
   });
 

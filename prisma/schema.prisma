@@ -17,6 +17,8 @@ model Building {
   outlineImageUrl String?
   qrUrl           String   @unique
   category        String   @default("landmark")
+  hidden          Boolean  @default(false)
+  published       Boolean  @default(true)
   discoveries     UserDiscovery[]
   images          BuildingImage[]
   createdAt       DateTime @default(now())

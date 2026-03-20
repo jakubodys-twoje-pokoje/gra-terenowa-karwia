@@ -149,10 +149,27 @@ export default function MapComponent({
   // Never pass blob: URLs into Leaflet HTML strings — they can be revoked and crash marker rendering
   const userAvatarUrl = _userAvatarUrlRaw?.startsWith('blob:') ? null : _userAvatarUrlRaw;
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef       = useRef<import('leaflet').Map | null>(null);
+  const containerRef        = useRef<HTMLDivElement>(null);
+  const mapRef              = useRef<import('leaflet').Map | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markersRef   = useRef<{ marker: any; building: MapBuilding }[]>([]);
+  const markersRef          = useRef<{ marker: any; building: MapBuilding }[]>([]);
+  // Ref to the add-markers function; set once Leaflet has loaded
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const addMarkersRef       = useRef<((b: MapBuilding[]) => void) | null>(null);
+  // Always reflects the latest buildings array, used inside Leaflet async closure
+  const buildingsRef        = useRef(buildings);
+  // Always reflects the latest onBuildingClick, used inside marker handlers
+  const onBuildingClickRef  = useRef(onBuildingClick);
+
+  // Keep refs in sync with props
+  useEffect(() => { buildingsRef.current = buildings; }, [buildings]);
+  useEffect(() => { onBuildingClickRef.current = onBuildingClick; }, [onBuildingClick]);
+
+  // Re-add building markers whenever the buildings array changes (covers the case where
+  // the Leaflet chunk was already cached and the effect ran before the API responded)
+  useEffect(() => {
+    addMarkersRef.current?.(buildings);
+  }, [buildings]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
