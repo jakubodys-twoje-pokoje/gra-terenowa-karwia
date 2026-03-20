@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
@@ -58,7 +58,98 @@ export default function AdminPage() {
   const [success, setSuccess]       = useState('');
   const [showForm, setShowForm]     = useState(false);
   const [pickingCoords, setPickingCoords] = useState(false);
-  const formRef = useRef<HTMLDivElement>(null);
+  const formRef    = useRef<HTMLDivElement>(null);
+
+  // ── CSV import ──────────────────────────────────────────────────────────────
+  type CsvStatus = 'pending' | 'importing' | 'ok' | string; // string = error msg
+  interface CsvRow {
+    name: string; description: string; address: string;
+    lat: string; lng: string; imageUrl: string; outlineImageUrl: string;
+    qrUrl: string; category: string; hidden: boolean; published: boolean;
+    gallery: string[];
+    status: CsvStatus;
+  }
+  const [csvRows, setCsvRows]         = useState<CsvRow[]>([]);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  function parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let i = 0;
+    while (i <= line.length) {
+      if (i === line.length) { result.push(''); break; }
+      if (line[i] === '"') {
+        let field = ''; i++;
+        while (i < line.length) {
+          if (line[i] === '"' && line[i + 1] === '"') { field += '"'; i += 2; }
+          else if (line[i] === '"') { i++; break; }
+          else { field += line[i++]; }
+        }
+        result.push(field);
+        if (line[i] === ',') i++;
+      } else {
+        let field = '';
+        while (i < line.length && line[i] !== ',') field += line[i++];
+        result.push(field.trim());
+        if (line[i] === ',') i++;
+      }
+    }
+    return result;
+  }
+
+  const EXPECTED_HEADERS = ['name','description','address','lat','lng','imageUrl','outlineImageUrl','qrUrl','category','hidden','published','gallery'];
+
+  const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = (ev.target?.result as string) ?? '';
+      const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((l) => l.trim());
+      if (lines.length < 2) return;
+      const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
+      const idx = (col: string) => headers.indexOf(col);
+      const get = (row: string[], col: string) => row[idx(col)]?.trim() ?? '';
+      const parseBool = (v: string, def: boolean) => v === '' ? def : (v === 'true' || v === '1');
+
+      const rows: CsvRow[] = lines.slice(1).map((line) => {
+        const cols = parseCsvLine(line);
+        return {
+          name: get(cols, 'name'),
+          description: get(cols, 'description'),
+          address: get(cols, 'address'),
+          lat: get(cols, 'lat'),
+          lng: get(cols, 'lng'),
+          imageUrl: get(cols, 'imageurl'),
+          outlineImageUrl: get(cols, 'outlineimageurl'),
+          qrUrl: get(cols, 'qrurl'),
+          category: get(cols, 'category') || 'landmark',
+          hidden: parseBool(get(cols, 'hidden'), false),
+          published: parseBool(get(cols, 'published'), true),
+          gallery: get(cols, 'gallery').split('|').map((u) => u.trim()).filter(Boolean),
+          status: 'pending',
+        };
+      }).filter((r) => r.name || r.qrUrl);
+      setCsvRows(rows);
+      e.target.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const runCsvImport = async () => {
+    setCsvImporting(true);
+    for (let i = 0; i < csvRows.length; i++) {
+      if (csvRows[i].status === 'ok') continue;
+      setCsvRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'importing' } : r));
+      const row = csvRows[i];
+      const body = { name: row.name, description: row.description, address: row.address, lat: parseFloat(row.lat), lng: parseFloat(row.lng), imageUrl: row.imageUrl || null, outlineImageUrl: row.outlineImageUrl || null, qrUrl: row.qrUrl, category: row.category, hidden: row.hidden, published: row.published, gallery: row.gallery };
+      const res = await fetch('/api/budynki', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
+      const msg = res.ok ? 'ok' : ((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+      setCsvRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: msg } : r));
+    }
+    setCsvImporting(false);
+    loadBuildings(password);
+  };
 
   const loadBuildings = useCallback(async (pwd: string) => {
     setLoading(true);
@@ -203,12 +294,17 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {activeTab === 'budynki' && (
+          {activeTab === 'budynki' && (<>
+            <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvFile} />
+            <button onClick={() => csvInputRef.current?.click()}
+              className="flex items-center gap-2 border border-ocean-300 text-ocean-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-ocean-50 transition">
+              <Upload size={14} /> CSV
+            </button>
             <button onClick={() => { cancelForm(); setShowForm(true); }}
               className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-ocean-600 transition">
               <Plus size={15} /> Dodaj budynek
             </button>
-          )}
+          </>)}
           <button onClick={() => { sessionStorage.removeItem('admin_pass'); setAuthed(false); }}
             className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title="Wyloguj">
             <LogOut size={18} />
@@ -246,6 +342,71 @@ export default function AdminPage() {
           <div className="md:hidden mx-4 mt-3 rounded-2xl overflow-hidden shadow-sm">
             <MapComponent buildings={mapBuildings} center={[54.7505, 17.8670]} zoom={13} height="180px" onMapClick={handleMapClick} />
           </div>
+
+          {/* ── CSV import panel ── */}
+          {csvRows.length > 0 && (
+            <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-bold text-ocean-900 text-sm flex items-center gap-2">
+                  <Upload size={14} className="text-ocean-400" />
+                  Import CSV
+                  <span className="text-xs font-normal text-gray-400">({csvRows.length} wierszy)</span>
+                </h2>
+                <button onClick={() => setCsvRows([])} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+              </div>
+
+              {/* legend */}
+              <p className="text-xs text-gray-400 mb-2">
+                Wymagane kolumny: <code className="bg-gray-100 px-1 rounded">name, description, lat, lng, qrUrl</code>
+                &nbsp;· gallery = URL-e oddzielone <code className="bg-gray-100 px-1 rounded">|</code>
+              </p>
+
+              <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-100">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="text-left px-2 py-1.5 text-gray-400 font-semibold w-6">#</th>
+                      <th className="text-left px-2 py-1.5 text-gray-400 font-semibold">Nazwa</th>
+                      <th className="text-left px-2 py-1.5 text-gray-400 font-semibold">QR URL</th>
+                      <th className="text-left px-2 py-1.5 text-gray-400 font-semibold w-20">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {csvRows.map((row, i) => (
+                      <tr key={i} className="border-t border-gray-50">
+                        <td className="px-2 py-1 text-gray-300">{i + 1}</td>
+                        <td className="px-2 py-1 truncate max-w-[140px]">{row.name || <span className="text-red-400 italic">brak</span>}</td>
+                        <td className="px-2 py-1 truncate max-w-[140px] text-gray-400">{row.qrUrl || <span className="text-red-400 italic">brak</span>}</td>
+                        <td className="px-2 py-1">
+                          {row.status === 'pending'   && <span className="text-gray-300">–</span>}
+                          {row.status === 'importing' && <span className="text-ocean-400 animate-pulse">…</span>}
+                          {row.status === 'ok'        && <span className="text-green-500 flex items-center gap-1"><Check size={11} /> OK</span>}
+                          {row.status !== 'pending' && row.status !== 'importing' && row.status !== 'ok' && (
+                            <span className="text-red-400 flex items-center gap-1 truncate" title={row.status}><AlertCircle size={11} /> {row.status}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={runCsvImport}
+                  disabled={csvImporting || csvRows.every((r) => r.status === 'ok')}
+                  className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-ocean-600 transition"
+                >
+                  {csvImporting ? <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Importuję…</> : <><Upload size={13} />Importuj {csvRows.filter((r) => r.status !== 'ok').length} wierszy</>}
+                </button>
+                {!csvImporting && csvRows.some((r) => r.status === 'ok') && (
+                  <span className="text-green-600 text-xs flex items-center gap-1">
+                    <Check size={12} /> {csvRows.filter((r) => r.status === 'ok').length} zaimportowano
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Form ── */}
           {showForm && (
