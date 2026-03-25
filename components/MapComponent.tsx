@@ -207,30 +207,42 @@ export default function MapComponent({
         map.on('click', (e) => onMapClick(e.latlng.lat, e.latlng.lng));
       }
 
-      // Build markers FIRST — before registering watchPosition, which may fire
-      // synchronously on some mobile browsers (cached GPS position), and could
-      // otherwise prevent building pins from being added if it throws.
-      const initialScale = getScale(zoom);
-      markersRef.current = [];
+      // ── Marker management ────────────────────────────────────────────────────
+      // Define addMarkers here so it can reference L and map, then register it
+      // on addMarkersRef so the buildings-change effect can call it anytime.
+      const addMarkers = (bs: MapBuilding[]) => {
+        // Remove all existing building markers from the Leaflet layer first
+        markersRef.current.forEach(({ marker }) => marker.remove());
+        markersRef.current = [];
 
-      buildings.forEach((b) => {
-        const icon   = makeIcon(L, b, initialScale);
-        const marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
+        const scale = getScale(map.getZoom());
+        bs.forEach((b) => {
+          const icon   = makeIcon(L, b, scale);
+          const marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
 
-        if (onBuildingClick) {
-          marker.on('click', (e: unknown) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            L.DomEvent.stopPropagation(e as any);
-            onBuildingClick(b.id);
-          });
-        } else {
-          marker.bindPopup(
-            `<strong style="font-family:Kanit,sans-serif">${b.name}</strong>` +
-            (b.discovered ? '<br/><span style="color:#0F5F92;font-size:12px">✓ Odkryty</span>' : ''),
-          );
-        }
-        markersRef.current.push({ marker, building: b });
-      });
+          if (onBuildingClickRef.current) {
+            marker.on('click', (e: unknown) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              L.DomEvent.stopPropagation(e as any);
+              onBuildingClickRef.current!(b.id);
+            });
+          } else {
+            marker.bindPopup(
+              `<strong style="font-family:Kanit,sans-serif">${b.name}</strong>` +
+              (b.discovered ? '<br/><span style="color:#0F5F92;font-size:12px">✓ Odkryty</span>' : ''),
+            );
+          }
+          markersRef.current.push({ marker, building: b });
+        });
+      };
+
+      // Register so the buildings-change effect can call addMarkers after init
+      addMarkersRef.current = addMarkers;
+
+      // Initial population — use buildingsRef.current (not the stale closure value)
+      // because Leaflet loads asynchronously and buildings may have already arrived
+      // from the API by the time this .then() fires.
+      addMarkers(buildingsRef.current);
 
       // User GPS dot — registered AFTER building markers so a synchronous GPS
       // callback (cached position) can never block building pin creation.
@@ -317,8 +329,8 @@ export default function MapComponent({
           openBuilding(id) {
             const entry = markersRef.current.find((e) => e.building.id === id);
             if (entry) {
-              if (onBuildingClick) {
-                onBuildingClick(id);
+              if (onBuildingClickRef.current) {
+                onBuildingClickRef.current(id);
               } else {
                 entry.marker.openPopup?.();
               }
