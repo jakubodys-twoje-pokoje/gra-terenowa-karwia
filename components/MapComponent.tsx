@@ -40,7 +40,10 @@ const KARWIA_CENTER: [number, number] = [54.828701688893595, 18.210140614060844]
 const LOGO_URL = '/icons/karwia-logo.webp';
 
 function getScale(zoom: number): number {
-  return Math.max(0.55, Math.min(2.2, Math.pow(1.38, zoom - 17)));
+  // At zoom 14 (village overview) → ~0.70 (readable pins)
+  // At zoom 17 (street level)     → ~1.00
+  // At zoom 19 (max)              → ~1.90
+  return Math.max(0.60, Math.min(2.2, Math.pow(1.32, zoom - 16)));
 }
 
 // ── Pin builders ─────────────────────────────────────────────────────────────

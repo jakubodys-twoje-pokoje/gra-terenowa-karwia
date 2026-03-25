@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, MapPin, Navigation, Check, Lock, QrCode, Share2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Check, Lock, QrCode, Share2, X } from 'lucide-react';
 import Link from 'next/link';
 import clsx from 'clsx';
 import type { MapBuilding } from '@/components/MapComponent';
@@ -64,6 +64,7 @@ export default function BudynekPage() {
   const [notFound, setNotFound] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [showAchievementToast, setShowAchievementToast] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const userId = getUserId();
@@ -252,8 +253,10 @@ export default function BudynekPage() {
       {/* Hero image */}
       <div className="relative h-64 bg-gradient-to-br from-ocean-300 to-ocean-600 overflow-hidden">
         {building.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={building.imageUrl} alt={building.name} className="w-full h-full object-cover" />
+          <button type="button" className="w-full h-full" onClick={() => setLightboxSrc(building.imageUrl!)}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={building.imageUrl} alt={building.name} className="w-full h-full object-cover" />
+          </button>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-7xl">🏛️</div>
         )}
@@ -285,10 +288,15 @@ export default function BudynekPage() {
           <div className="mt-4">
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
               {building.images.map((img) => (
-                <div key={img.id} className="shrink-0 w-64 h-44 rounded-2xl overflow-hidden shadow-card snap-start">
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={() => setLightboxSrc(img.url)}
+                  className="shrink-0 w-64 h-44 rounded-2xl overflow-hidden shadow-card snap-start active:scale-95 transition-transform"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={img.url} alt={building.name} className="w-full h-full object-cover" />
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -375,6 +383,30 @@ export default function BudynekPage() {
             <p className="font-bold text-sm">Miejsce odkryte!</p>
             <p className="text-ocean-200 text-xs">{building.name} zostało dodane do Twoich odkryć</p>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-[950] bg-black/95 flex items-center justify-center"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-5 right-5 text-white/60 hover:text-white transition p-2"
+            onClick={() => setLightboxSrc(null)}
+            aria-label="Zamknij"
+          >
+            <X size={30} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxSrc}
+            alt=""
+            className="max-w-full max-h-full object-contain select-none"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 
