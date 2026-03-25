@@ -40,10 +40,8 @@ const KARWIA_CENTER: [number, number] = [54.828701688893595, 18.210140614060844]
 const LOGO_URL = '/icons/karwia-logo.webp';
 
 function getScale(zoom: number): number {
-  // At zoom 14 (village overview) → ~0.70 (readable pins)
-  // At zoom 17 (street level)     → ~1.00
-  // At zoom 19 (max)              → ~1.90
-  return Math.max(0.60, Math.min(2.2, Math.pow(1.32, zoom - 16)));
+  // At zoom 15 → 0.65 · At zoom 16 → 0.80 · At zoom 18 → 1.00 · At zoom 21 → 1.50
+  return Math.max(0.45, Math.min(1.8, Math.pow(1.22, zoom - 18)));
 }
 
 // ── Pin builders ─────────────────────────────────────────────────────────────
@@ -79,9 +77,9 @@ function makeIcon(L: any, b: MapBuilding, scale: number) {
   let iconAnchor: [number, number];
 
   if (b.isActive) {
-    const sz  = Math.round(50 * scale);
-    const tip = Math.round(16 * scale);
-    const tipH = Math.round(10 * scale);
+    const sz  = Math.round(36 * scale);
+    const tip = Math.round(11 * scale);
+    const tipH = Math.round(7 * scale);
     const rw  = Math.max(2, Math.round(3 * scale));
     // Always show the Karwia logo (or building photo if available)
     const src = b.imageUrl ?? LOGO_URL;
@@ -93,16 +91,16 @@ function makeIcon(L: any, b: MapBuilding, scale: number) {
     iconAnchor = [Math.round((sz + 6) / 2), sz + tipH + 4];
 
   } else if (b.discovered) {
-    const sz  = Math.round(44 * scale);
-    const tip = Math.round(14 * scale);
-    const tipH = Math.round(9 * scale);
-    const rw  = Math.max(2, Math.round(3 * scale));
+    const sz  = Math.round(30 * scale);
+    const tip = Math.round(10 * scale);
+    const tipH = Math.round(6 * scale);
+    const rw  = Math.max(1, Math.round(2 * scale));
     const src = b.imageUrl;
     const body = src
       ? photoCircle(src, sz, '#0F5F92', rw)
       : `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#0F5F92;
            outline:${rw}px solid white;box-sizing:border-box;
-           display:flex;align-items:center;justify-content:center;font-size:${Math.round(18 * scale)}px;color:white;font-weight:bold;">✓</div>`;
+           display:flex;align-items:center;justify-content:center;font-size:${Math.round(13 * scale)}px;color:white;font-weight:bold;">✓</div>`;
     html = `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:${dropShadow(0.35)}">
       ${body}
       ${svgPointer('#0F5F92', tip)}
@@ -111,10 +109,10 @@ function makeIcon(L: any, b: MapBuilding, scale: number) {
     iconAnchor = [Math.round((sz + 6) / 2), sz + tipH + 4];
 
   } else {
-    const sz  = Math.round(38 * scale);
-    const tip = Math.round(12 * scale);
-    const tipH = Math.round(8 * scale);
-    const rw  = Math.max(1, Math.round(2 * scale));
+    const sz  = Math.round(26 * scale);
+    const tip = Math.round(8 * scale);
+    const tipH = Math.round(5 * scale);
+    const rw  = Math.max(1, Math.round(1.5 * scale));
     const src = b.outlineImageUrl ?? b.imageUrl;
     const body = src
       ? photoCircle(src, sz, '#9CA3AF', rw, true)
@@ -202,7 +200,8 @@ export default function MapComponent({
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
-        maxZoom: 19,
+        maxNativeZoom: 19,
+        maxZoom: 21,
         subdomains: 'abcd',
       }).addTo(map);
 
