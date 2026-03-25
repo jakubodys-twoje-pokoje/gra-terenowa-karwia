@@ -28,6 +28,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const body = await req.json();
   const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
 
+  if (lat != null) {
+    const latNum = Number(lat);
+    if (isNaN(latNum) || latNum < -90 || latNum > 90) {
+      return NextResponse.json({ error: 'Nieprawidłowa szerokość geograficzna (lat: −90…90)' }, { status: 400 });
+    }
+  }
+  if (lng != null) {
+    const lngNum = Number(lng);
+    if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+      return NextResponse.json({ error: 'Nieprawidłowa długość geograficzna (lng: −180…180)' }, { status: 400 });
+    }
+  }
+
   try {
     const building = await prisma.building.update({
       where: { id: Number(params.id) },

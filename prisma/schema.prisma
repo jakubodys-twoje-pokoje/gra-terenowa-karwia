@@ -23,6 +23,9 @@ model Building {
   images          BuildingImage[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([published])
 }
 
 model BuildingImage {

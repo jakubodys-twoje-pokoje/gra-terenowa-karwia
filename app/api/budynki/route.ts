@@ -45,10 +45,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Brakujące pola' }, { status: 400 });
   }
 
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+  if (isNaN(latNum) || latNum < -90 || latNum > 90 || isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+    return NextResponse.json({ error: 'Nieprawidłowe koordynaty (lat: −90…90, lng: −180…180)' }, { status: 400 });
+  }
+
   try {
     const building = await prisma.building.create({
       data: {
-        name, description, address, lat: Number(lat), lng: Number(lng),
+        name, description, address, lat: latNum, lng: lngNum,
         imageUrl, outlineImageUrl, qrUrl, category: category || 'landmark',
         hidden: hidden ?? false,
         published: published ?? true,

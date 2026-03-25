@@ -89,7 +89,7 @@ export default function BudynekPage() {
 
     const b: Building = await bRes.json();
     const n: NearbyBuilding[] = nRes.ok ? await nRes.json() : [];
-    const discoveries: { building: { id: number } }[] = discRes.ok ? await discRes.json() : [];
+    const discoveries: { building: { id: number; category: string } }[] = discRes.ok ? await discRes.json() : [];
 
     // Ground-truth discovery check from server — cannot be spoofed via localStorage
     const isDiscovered = discoveries.some((d) => d.building.id === Number(id));
@@ -112,16 +112,24 @@ export default function BudynekPage() {
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
 
-    // Check for newly unlocked achievements
-    const allBuildings = await fetch('/api/budynki').then((r) => r.json());
-    const { getUnlockedAchievements } = await import('@/lib/achievements');
-    const cats = discoveries.map((d) => (d as unknown as { building: { category: string } }).building.category);
-    const prevCount = discoveries.length - 1;
-    const prevUnlocked = new Set(
-      getUnlockedAchievements(prevCount, allBuildings.length, cats).map((a) => a.id)
+    // Check for newly unlocked achievements using DB-based endpoint
+    const achRes = await fetch(`/api/osiagniecia?userId=${userId}`);
+    if (!achRes.ok) return;
+
+    const allAchievements: Array<{ id: number; name: string; unlocked: boolean }> = await achRes.json();
+
+    // Compare with previously-seen unlocked set stored in localStorage
+    const prevKey = `karwia_prev_ach_${userId}`;
+    const prevUnlocked: number[] = JSON.parse(localStorage.getItem(prevKey) ?? '[]');
+    const prevSet = new Set(prevUnlocked);
+
+    const justUnlocked = allAchievements.filter((a) => a.unlocked && !prevSet.has(a.id));
+
+    // Persist current unlocked state for future comparisons
+    localStorage.setItem(
+      prevKey,
+      JSON.stringify(allAchievements.filter((a) => a.unlocked).map((a) => a.id)),
     );
-    const justUnlocked = getUnlockedAchievements(discoveries.length, allBuildings.length, cats)
-      .filter((a) => !prevUnlocked.has(a.id));
 
     if (justUnlocked.length === 0) return;
     setNewAchievements(justUnlocked.map((a) => a.name));

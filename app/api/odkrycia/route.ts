@@ -29,8 +29,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Brak userId lub buildingId' }, { status: 400 });
   }
 
-  const building = await prisma.building.findUnique({ where: { id: Number(buildingId) } });
+  const building = await prisma.building.findUnique({
+    where: { id: Number(buildingId) },
+    select: { id: true, published: true },
+  });
   if (!building) return NextResponse.json({ error: 'Budynek nie istnieje' }, { status: 404 });
+  if (!building.published) return NextResponse.json({ error: 'Budynek nie jest opublikowany' }, { status: 403 });
+
+  // Check existence BEFORE upsert so we can report whether it was already discovered
+  const existing = await prisma.userDiscovery.findUnique({
+    where: { userId_buildingId: { userId, buildingId: Number(buildingId) } },
+    select: { id: true },
+  });
 
   const discovery = await prisma.userDiscovery.upsert({
     where: { userId_buildingId: { userId, buildingId: Number(buildingId) } },
@@ -38,5 +48,5 @@ export async function POST(req: NextRequest) {
     create: { userId, buildingId: Number(buildingId) },
   });
 
-  return NextResponse.json({ ...discovery, alreadyDiscovered: discovery.discoveredAt < new Date() });
+  return NextResponse.json({ ...discovery, alreadyDiscovered: !!existing });
 }
