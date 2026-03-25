@@ -70,6 +70,9 @@ export default function AdminPage() {
   const [success, setSuccess]       = useState('');
   const [showForm, setShowForm]     = useState(false);
   const [pickingCoords, setPickingCoords] = useState(false);
+  const [showDms, setShowDms]       = useState(false);
+  const [dmsLat, setDmsLat]         = useState({ d: '', m: '', s: '' });
+  const [dmsLng, setDmsLng]         = useState({ d: '', m: '', s: '' });
   const formRef    = useRef<HTMLDivElement>(null);
 
   // ── Categories state ─────────────────────────────────────────────────────────
@@ -324,7 +327,35 @@ export default function AdminPage() {
     if (res.ok) { setAchievements((prev) => prev.filter((a) => a.id !== id)); flash('Osiągnięcie usunięte'); }
   };
 
-  const cancelForm = () => { setForm(EMPTY_FORM); setGallery([]); setEditingId(null); setShowForm(false); setFormError(''); };
+  const cancelForm = () => {
+    setForm(EMPTY_FORM); setGallery([]); setEditingId(null); setShowForm(false); setFormError('');
+    setShowDms(false); setDmsLat({ d: '', m: '', s: '' }); setDmsLng({ d: '', m: '', s: '' });
+  };
+
+  // Convert degrees/minutes/seconds → decimal degrees string
+  const dmsToDecimal = (d: string, m: string, s: string): string | null => {
+    const deg = parseFloat(d.replace(',', '.'));
+    if (isNaN(deg)) return null;
+    const min = parseFloat(m.replace(',', '.')) || 0;
+    const sec = parseFloat(s.replace(',', '.')) || 0;
+    if (min < 0 || min >= 60 || sec < 0 || sec >= 60) return null;
+    const abs = Math.abs(deg) + min / 60 + sec / 3600;
+    return (deg < 0 ? -abs : abs).toFixed(6);
+  };
+
+  const handleDmsChange = (
+    field: 'lat' | 'lng',
+    part: 'd' | 'm' | 's',
+    value: string,
+  ) => {
+    const next = field === 'lat'
+      ? { ...dmsLat, [part]: value }
+      : { ...dmsLng, [part]: value };
+    if (field === 'lat') setDmsLat(next);
+    else setDmsLng(next);
+    const decimal = dmsToDecimal(next.d, next.m, next.s);
+    if (decimal) setForm((f) => ({ ...f, [field]: decimal }));
+  };
 
   const mapBuildings = buildings.map((b) => ({ id: b.id, name: b.name, lat: b.lat, lng: b.lng, discovered: true }));
 
@@ -528,9 +559,68 @@ export default function AdminPage() {
                 </select>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <input required placeholder="Szerokość (lat)" value={form.lat} onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value }))} className="input" />
-                  <input required placeholder="Długość (lng)"  value={form.lng} onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))} className="input" />
+                  <input required placeholder="Szer. (lat) np. 54.8287" value={form.lat}
+                    onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value.replace(',', '.') }))}
+                    className="input" />
+                  <input required placeholder="Dług. (lng) np. 18.2101" value={form.lng}
+                    onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value.replace(',', '.') }))}
+                    className="input" />
                 </div>
+
+                {/* DMS converter */}
+                <button
+                  type="button"
+                  onClick={() => setShowDms((v) => !v)}
+                  className="text-xs text-ocean-400 hover:text-ocean-600 flex items-center gap-1 px-1"
+                >
+                  {showDms ? '▲' : '▼'} Wpisz w stopniach/minutach/sekundach (°′″)
+                </button>
+                {showDms && (
+                  <div className="border border-ocean-100 rounded-xl p-3 bg-ocean-50/40 space-y-2 text-xs">
+                    <p className="text-gray-400">Wypełnij poniżej — pola Lat/Lng zostaną przeliczone automatycznie.</p>
+                    {(['lat', 'lng'] as const).map((field) => {
+                      const val = field === 'lat' ? dmsLat : dmsLng;
+                      const label = field === 'lat' ? 'Szerokość (N/S)' : 'Długość (E/W)';
+                      return (
+                        <div key={field}>
+                          <p className="text-gray-500 font-semibold mb-1">{label}</p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <div>
+                              <label className="text-gray-400 block mb-0.5">Stopnie °</label>
+                              <input
+                                placeholder="54"
+                                value={val.d}
+                                onChange={(e) => handleDmsChange(field, 'd', e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-gray-400 block mb-0.5">Minuty ′</label>
+                              <input
+                                placeholder="49"
+                                value={val.m}
+                                onChange={(e) => handleDmsChange(field, 'm', e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-gray-400 block mb-0.5">Sekundy ″</label>
+                              <input
+                                placeholder="59.08"
+                                value={val.s}
+                                onChange={(e) => handleDmsChange(field, 's', e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <p className="text-ocean-500 text-[11px]">
+                      Wynik: lat = <strong>{form.lat}</strong> · lng = <strong>{form.lng}</strong>
+                    </p>
+                  </div>
+                )}
 
                 <button type="button" onClick={() => setPickingCoords(true)}
                   className={clsx('w-full py-2.5 rounded-xl text-sm font-semibold border-2 transition flex items-center justify-center gap-2', pickingCoords ? 'bg-ocean-500 text-white border-ocean-500' : 'border-dashed border-ocean-300 text-ocean-500 hover:border-ocean-500')}>
