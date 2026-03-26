@@ -88,18 +88,15 @@ export default function MapPage() {
     }
   };
 
-  // ── Center on user — uses cached watchPosition, instant response ─────────
+  // ── Center on user — called from tap so iOS sees a user gesture ─────────
   const handleCenterOnUser = () => {
+    // startTracking must be called from a tap handler — this is the only way
+    // iOS Safari will show the location-permission dialog.
+    mapHandle.current?.startTracking(user?.avatarUrl ?? null);
+    // If we already have a cached position, pan there instantly.
     if (userPosRef.current) {
       mapHandle.current?.panTo(userPosRef.current[0], userPosRef.current[1], 17);
-      return;
     }
-    // Fallback if cache not yet available (GPS still warming up)
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => mapHandle.current?.panTo(pos.coords.latitude, pos.coords.longitude, 17),
-      () => {},
-      { timeout: 8000, maximumAge: 0 },
-    );
   };
 
   // ── Nearest building — uses cached position, no GPS cold-start ───────────
@@ -117,7 +114,7 @@ export default function MapPage() {
         if (d < minDist) { minDist = d; nearest = b; }
       });
 
-      mapHandle.current?.panTo(nearest.lat, nearest.lng, 17);
+      mapHandle.current?.panTo(nearest.lat, nearest.lng, 19);
       setSelected(nearest);
       setSheetOpen(true);
       setNearestLoading(false);
@@ -178,7 +175,7 @@ export default function MapPage() {
       <MapComponent
         buildings={mapBuildings}
         height="100%"
-        zoom={21}
+        zoom={19}
         showUserLocation
         userAvatarUrl={user?.avatarUrl}
         onBuildingClick={handleBuildingClick}
