@@ -200,7 +200,6 @@ export default function MapComponent({
       };
       const map = L.map(containerRef.current, mapOptions).setView(center, zoom);
       mapRef.current = map;
-      lRef.current   = L;
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
