@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle, Tag, Trophy } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle, Tag, Trophy, Egg } from 'lucide-react';
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
@@ -24,6 +24,7 @@ interface UserEntry {
 
 interface CategoryEntry { id: number; value: string; label: string; icon: string; order: number; }
 interface AchievementEntry { id: number; name: string; description: string; icon: string; color: string; conditionType: string; conditionValue: number; conditionCategory: string | null; order: number; }
+interface EasterEggEntry { id: number; name: string; title: string; description: string | null; mediaType: string; mediaUrl: string | null; triggerType: string; triggerValue: number | null; triggerBuildingId: number | null; active: boolean; }
 
 const CONDITION_TYPES = [
   { value: 'total_count',    label: 'Liczba odkryć (≥ N)' },
@@ -33,6 +34,12 @@ const CONDITION_TYPES = [
 
 const EMPTY_CAT_FORM = { value: '', label: '', icon: '', order: 0 };
 const EMPTY_ACH_FORM = { name: '', description: '', icon: '🏆', color: '#0F5F92', conditionType: 'total_count', conditionValue: 1, conditionCategory: '', order: 0 };
+const EMPTY_EGG_FORM = { name: '', title: '', description: '', mediaType: 'none', mediaUrl: '', triggerType: 'discovery_count', triggerValue: 1, triggerBuildingId: '', active: true };
+const TRIGGER_TYPES = [
+  { value: 'discovery_count', label: 'Po dokładnie N odkryciach' },
+  { value: 'every_n',         label: 'Co każde N odkrycia' },
+  { value: 'building',        label: 'Odkrycie konkretnego budynku' },
+];
 
 const CATEGORIES = [
   { value: 'beach',      label: '🏖️ Plaża' },
@@ -54,7 +61,7 @@ const EMPTY_FORM = {
 export default function AdminPage() {
   const [password, setPassword]     = useState('');
   const [authed, setAuthed]         = useState(false);
-  const [activeTab, setActiveTab]   = useState<'budynki' | 'uzytkownicy' | 'tresci' | 'kategorie' | 'osiagniecia'>('budynki');
+  const [activeTab, setActiveTab]   = useState<'budynki' | 'uzytkownicy' | 'tresci' | 'kategorie' | 'osiagniecia' | 'easter-eggi'>('budynki');
   const [contentReg, setContentReg]   = useState('');
   const [contentPol, setContentPol]   = useState('');
   const [contentSaving, setContentSaving] = useState<string | null>(null);
@@ -86,6 +93,12 @@ export default function AdminPage() {
   const [editingAchId, setEditingAchId]   = useState<number | null>(null);
   const [achForm, setAchForm]             = useState(EMPTY_ACH_FORM);
   const [showAchForm, setShowAchForm]     = useState(false);
+
+  // ── Easter Eggs state ────────────────────────────────────────────────────────
+  const [easterEggs, setEasterEggs]         = useState<EasterEggEntry[]>([]);
+  const [editingEggId, setEditingEggId]     = useState<number | null>(null);
+  const [eggForm, setEggForm]               = useState(EMPTY_EGG_FORM);
+  const [showEggForm, setShowEggForm]       = useState(false);
 
   // ── CSV import ──────────────────────────────────────────────────────────────
   type CsvStatus = 'pending' | 'importing' | 'ok' | string; // string = error msg
@@ -200,6 +213,11 @@ export default function AdminPage() {
     if (res.ok) setAchievements(await res.json());
   }, []);
 
+  const loadEasterEggs = useCallback(async (pwd: string) => {
+    const res = await fetch('/api/admin/easter-eggs', { headers: { 'x-admin-password': pwd } });
+    if (res.ok) setEasterEggs(await res.json());
+  }, []);
+
   const loadContent = useCallback(async () => {
     const [r, p] = await Promise.all([
       fetch('/api/content?key=regulamin').then((x) => x.json()),
@@ -225,8 +243,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem('admin_pass');
-    if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); loadContent(); loadCategories(stored); loadAchievements(stored); }
-  }, [loadBuildings, loadUsers, loadContent, loadCategories, loadAchievements]);
+    if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); loadContent(); loadCategories(stored); loadAchievements(stored); loadEasterEggs(stored); }
+  }, [loadBuildings, loadUsers, loadContent, loadCategories, loadAchievements, loadEasterEggs]);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,6 +255,7 @@ export default function AdminPage() {
     loadContent();
     loadCategories(password);
     loadAchievements(password);
+    loadEasterEggs(password);
   };
 
   const handleMapClick = (lat: number, lng: number) => {
@@ -327,6 +346,36 @@ export default function AdminPage() {
     if (res.ok) { setAchievements((prev) => prev.filter((a) => a.id !== id)); flash('Osiągnięcie usunięte'); }
   };
 
+  // ── Easter Egg CRUD ──────────────────────────────────────────────────────────
+  const cancelEggForm = () => { setEggForm(EMPTY_EGG_FORM); setEditingEggId(null); setShowEggForm(false); setFormError(''); };
+
+  const handleEggSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); setFormError('');
+    const body = {
+      ...eggForm,
+      triggerValue: eggForm.triggerType !== 'building' ? Number(eggForm.triggerValue) : null,
+      triggerBuildingId: eggForm.triggerType === 'building' ? Number(eggForm.triggerBuildingId) : null,
+      mediaUrl: eggForm.mediaUrl || null,
+      description: eggForm.description || null,
+    };
+    const url    = editingEggId ? `/api/admin/easter-eggs/${editingEggId}` : '/api/admin/easter-eggs';
+    const method = editingEggId ? 'PUT' : 'POST';
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
+    if (res.ok) { flash(editingEggId ? 'Easter egg zaktualizowany!' : 'Easter egg dodany!'); cancelEggForm(); loadEasterEggs(password); }
+    else { const err = await res.json(); setFormError(err.error || 'Błąd zapisu'); }
+  };
+
+  const handleEggEdit = (egg: EasterEggEntry) => {
+    setEggForm({ name: egg.name, title: egg.title, description: egg.description ?? '', mediaType: egg.mediaType, mediaUrl: egg.mediaUrl ?? '', triggerType: egg.triggerType, triggerValue: egg.triggerValue ?? 1, triggerBuildingId: egg.triggerBuildingId?.toString() ?? '', active: egg.active });
+    setEditingEggId(egg.id); setShowEggForm(true);
+  };
+
+  const handleEggDelete = async (id: number, name: string) => {
+    if (!confirm(`Usunąć easter egg "${name}"?`)) return;
+    const res = await fetch(`/api/admin/easter-eggs/${id}`, { method: 'DELETE', headers: { 'x-admin-password': password } });
+    if (res.ok) { setEasterEggs((prev) => prev.filter((e) => e.id !== id)); flash('Easter egg usunięty'); }
+  };
+
   const cancelForm = () => {
     setForm(EMPTY_FORM); setGallery([]); setEditingId(null); setShowForm(false); setFormError('');
     setShowDms(false); setDmsLat({ d: '', m: '', s: '' }); setDmsLng({ d: '', m: '', s: '' });
@@ -399,6 +448,7 @@ export default function AdminPage() {
               ['tresci',      <FileText  key="t" size={13} />, 'Treści'],
               ['kategorie',   <Tag       key="k" size={13} />, 'Kategorie'],
               ['osiagniecia', <Trophy    key="o" size={13} />, 'Osiągnięcia'],
+              ['easter-eggi', <Egg       key="e" size={13} />, 'Easter Eggi'],
             ] as [string, React.ReactNode, string][]).map(([tab, icon, label]) => (
               <button key={tab} onClick={() => setActiveTab(tab as typeof activeTab)}
                 className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all', activeTab === tab ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
@@ -431,6 +481,12 @@ export default function AdminPage() {
               <Plus size={15} /> Dodaj osiągnięcie
             </button>
           )}
+          {activeTab === 'easter-eggi' && (
+            <button onClick={() => { cancelEggForm(); setShowEggForm(true); }}
+              className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-ocean-600 transition">
+              <Plus size={15} /> Dodaj easter egg
+            </button>
+          )}
           <button onClick={() => { sessionStorage.removeItem('admin_pass'); setAuthed(false); }}
             className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title="Wyloguj">
             <LogOut size={18} />
@@ -446,6 +502,7 @@ export default function AdminPage() {
           ['tresci',      <FileText  key="t" size={12} />, 'Treści'],
           ['kategorie',   <Tag       key="k" size={12} />, 'Kategorie'],
           ['osiagniecia', <Trophy    key="o" size={12} />, 'Osiągnięcia'],
+          ['easter-eggi', <Egg       key="e" size={12} />, 'Easter Eggi'],
         ] as [string, React.ReactNode, string][]).map(([tab, icon, label]) => (
           <button key={tab} onClick={() => setActiveTab(tab as typeof activeTab)}
             className={clsx('flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold transition-all', activeTab === tab ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400')}>
@@ -938,6 +995,110 @@ export default function AdminPage() {
                 ))}
                 {categories.length === 0 && (
                   <div className="text-center py-10 text-gray-400 text-sm">Brak kategorii — kliknij &quot;Dodaj kategorię&quot;</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── EASTER EGGI ── */}
+          {activeTab === 'easter-eggi' && (
+            <div className="px-4 py-4">
+              {showEggForm && (
+                <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+                  <h3 className="font-bold text-ocean-900 text-sm mb-3">{editingEggId ? 'Edytuj easter egg' : 'Nowy easter egg'}</h3>
+                  <form onSubmit={handleEggSubmit} className="space-y-3">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Nazwa wewnętrzna (tylko dla admina)</label>
+                      <input required placeholder="np. Sekret plażowicza" value={eggForm.name} onChange={(e) => setEggForm((f) => ({ ...f, name: e.target.value }))} className="input" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Tytuł (widoczny dla użytkownika)</label>
+                      <input required placeholder="np. Znalazłeś ukrytą perełkę!" value={eggForm.title} onChange={(e) => setEggForm((f) => ({ ...f, title: e.target.value }))} className="input" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Opis (opcjonalny)</label>
+                      <textarea rows={2} placeholder="Dodatkowy tekst pokazywany w popupie…" value={eggForm.description} onChange={(e) => setEggForm((f) => ({ ...f, description: e.target.value }))} className="input resize-none" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Typ mediów</label>
+                        <select value={eggForm.mediaType} onChange={(e) => setEggForm((f) => ({ ...f, mediaType: e.target.value }))} className="input">
+                          <option value="none">Brak</option>
+                          <option value="image">Zdjęcie</option>
+                          <option value="video">Wideo</option>
+                          <option value="audio">Audio</option>
+                        </select>
+                      </div>
+                      {eggForm.mediaType !== 'none' && (
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">URL mediów</label>
+                          <input placeholder="https://…" value={eggForm.mediaUrl} onChange={(e) => setEggForm((f) => ({ ...f, mediaUrl: e.target.value }))} className="input" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Wyzwalacz</label>
+                      <select value={eggForm.triggerType} onChange={(e) => setEggForm((f) => ({ ...f, triggerType: e.target.value }))} className="input">
+                        {TRIGGER_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
+                    </div>
+                    {eggForm.triggerType !== 'building' && (
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">
+                          {eggForm.triggerType === 'discovery_count' ? 'Liczba odkryć (N)' : 'Co każde N odkrycie'}
+                        </label>
+                        <input type="number" min={1} required value={eggForm.triggerValue} onChange={(e) => setEggForm((f) => ({ ...f, triggerValue: Number(e.target.value) }))} className="input" />
+                      </div>
+                    )}
+                    {eggForm.triggerType === 'building' && (
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Budynek (ID lub wybierz z listy)</label>
+                        <select value={eggForm.triggerBuildingId} onChange={(e) => setEggForm((f) => ({ ...f, triggerBuildingId: e.target.value }))} className="input">
+                          <option value="">— wybierz budynek —</option>
+                          {buildings.map((b) => <option key={b.id} value={b.id}>{b.id}: {b.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" id="eggActive" checked={eggForm.active} onChange={(e) => setEggForm((f) => ({ ...f, active: e.target.checked }))} className="rounded" />
+                      <label htmlFor="eggActive" className="text-xs text-gray-600">Aktywny</label>
+                    </div>
+                    {formError && <p className="text-red-500 text-sm">{formError}</p>}
+                    <div className="flex gap-2 pt-1">
+                      <button type="submit" className="flex-1 bg-ocean-500 text-white py-3 rounded-xl font-bold text-sm hover:bg-ocean-600 transition">
+                        {editingEggId ? 'Zapisz zmiany' : 'Dodaj easter egg'}
+                      </button>
+                      <button type="button" onClick={cancelEggForm} className="px-4 py-3 rounded-xl border border-gray-200 text-gray-500 text-sm hover:bg-gray-50">Anuluj</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {easterEggs.map((egg) => (
+                  <div key={egg.id} className="bg-white rounded-xl shadow-sm p-3 flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-xl shrink-0">🥚</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-ocean-900 text-sm">{egg.name}</p>
+                        {!egg.active && <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full font-bold">nieaktywny</span>}
+                      </div>
+                      <p className="text-gray-500 text-xs truncate">{egg.title}</p>
+                      <p className="text-gray-400 text-xs mt-0.5">
+                        {egg.triggerType === 'discovery_count' && `Wyzwalacz: po ${egg.triggerValue} odkryciach`}
+                        {egg.triggerType === 'every_n'         && `Wyzwalacz: co ${egg.triggerValue}. odkrycie`}
+                        {egg.triggerType === 'building'        && `Wyzwalacz: budynek #${egg.triggerBuildingId}`}
+                        {egg.mediaType !== 'none' && ` · ${egg.mediaType}`}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => handleEggEdit(egg)} className="p-1.5 rounded-lg bg-ocean-50 text-ocean-500 hover:bg-ocean-100 transition"><Edit3 size={14} /></button>
+                      <button onClick={() => handleEggDelete(egg.id, egg.name)} className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+                {easterEggs.length === 0 && !showEggForm && (
+                  <div className="text-center py-10 text-gray-400 text-sm">Brak easter eggów — kliknij &quot;Dodaj easter egg&quot;</div>
                 )}
               </div>
             </div>

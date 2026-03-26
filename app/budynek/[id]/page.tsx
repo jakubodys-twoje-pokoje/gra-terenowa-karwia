@@ -7,6 +7,7 @@ import { ArrowLeft, MapPin, Navigation, Check, Lock, QrCode, Share2, X } from 'l
 import Link from 'next/link';
 import clsx from 'clsx';
 import type { MapBuilding } from '@/components/MapComponent';
+import EasterEggPopup, { type EasterEggData } from '@/components/EasterEggPopup';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
 
@@ -65,6 +66,7 @@ export default function BudynekPage() {
   const [showToast, setShowToast] = useState(false);
   const [showAchievementToast, setShowAchievementToast] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [easterEgg, setEasterEgg] = useState<EasterEggData | null>(null);
 
   const load = useCallback(async () => {
     const userId = getUserId();
@@ -131,6 +133,21 @@ export default function BudynekPage() {
       prevKey,
       JSON.stringify(allAchievements.filter((a) => a.unlocked).map((a) => a.id)),
     );
+
+    // Check for easter egg triggers
+    const eggRes = await fetch('/api/easter-eggs/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        discoveryCount: discoveries.length,
+        buildingId: Number(id),
+      }),
+    });
+    if (eggRes.ok) {
+      const egg = await eggRes.json();
+      if (egg) setTimeout(() => setEasterEgg(egg), 1200);
+    }
 
     if (justUnlocked.length === 0) return;
     setNewAchievements(justUnlocked.map((a) => a.name));
@@ -448,6 +465,11 @@ export default function BudynekPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Easter Egg popup */}
+      {easterEgg && (
+        <EasterEggPopup egg={easterEgg} onClose={() => setEasterEgg(null)} />
       )}
     </div>
   );

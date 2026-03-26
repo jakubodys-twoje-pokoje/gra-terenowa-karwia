@@ -86,6 +86,33 @@ model Achievement {
   order             Int     @default(0)
 }
 
+model EasterEgg {
+  id                Int      @id @default(autoincrement())
+  name              String   // internal label (admin only)
+  title             String   // shown to user
+  description       String?
+  mediaType         String   @default("none") // none | image | video | audio
+  mediaUrl          String?
+  triggerType       String   // discovery_count | every_n | building
+  triggerValue      Int?     // discovery_count: show at exactly N; every_n: show every N
+  triggerBuildingId Int?     // building trigger: building id
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  views             EasterEggView[]
+}
+
+model EasterEggView {
+  id        Int       @id @default(autoincrement())
+  userId    String
+  eggId     Int
+  egg       EasterEgg @relation(fields: [eggId], references: [id], onDelete: Cascade)
+  milestone Int       @default(0)  // for every_n: which multiple fired (1=first, 2=second…)
+  seenAt    DateTime  @default(now())
+
+  @@unique([userId, eggId, milestone])
+  @@index([userId])
+}
+
 model EmailVerificationToken {
   id          Int      @id @default(autoincrement())
   userId      String
