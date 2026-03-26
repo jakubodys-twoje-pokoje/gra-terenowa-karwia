@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle, Tag, Trophy, Egg } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle, Tag, Trophy, Egg, Download } from 'lucide-react';
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
@@ -299,6 +299,21 @@ export default function AdminPage() {
 
   const flash = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const downloadCsv = (filename: string, rows: any[]) => {
+    if (rows.length === 0) return;
+    const headers = Object.keys(rows[0]);
+    const escape = (v: unknown) => {
+      const s = v == null ? '' : String(v).replace(/"/g, '""');
+      return /[",\n\r]/.test(s) ? `"${s}"` : s;
+    };
+    const csv = [headers.join(','), ...rows.map((r) => headers.map((h) => escape(r[h])).join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = filename;
+    a.click();
+  };
+
   // ── Category CRUD ────────────────────────────────────────────────────────────
   const cancelCatForm = () => { setCatForm(EMPTY_CAT_FORM); setEditingCatId(null); setShowCatForm(false); setFormError(''); };
 
@@ -462,25 +477,37 @@ export default function AdminPage() {
             <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvFile} />
             <button onClick={() => csvInputRef.current?.click()}
               className="flex items-center gap-2 border border-ocean-300 text-ocean-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-ocean-50 transition">
-              <Upload size={14} /> CSV
+              <Upload size={14} /> Import CSV
+            </button>
+            <button onClick={() => downloadCsv('budynki.csv', buildings.map(({ images, ...b }) => ({ ...b, gallery: images.map((i) => i.url).join('|') })))}
+              className="flex items-center gap-2 border border-ocean-300 text-ocean-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-ocean-50 transition">
+              <Download size={14} /> Eksport CSV
             </button>
             <button onClick={() => { cancelForm(); setShowForm(true); }}
               className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-ocean-600 transition">
               <Plus size={15} /> Dodaj budynek
             </button>
           </>)}
-          {activeTab === 'kategorie' && (
+          {activeTab === 'kategorie' && (<>
+            <button onClick={() => downloadCsv('kategorie.csv', categories)}
+              className="flex items-center gap-2 border border-ocean-300 text-ocean-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-ocean-50 transition">
+              <Download size={14} /> CSV
+            </button>
             <button onClick={() => { cancelCatForm(); setShowCatForm(true); }}
               className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-ocean-600 transition">
               <Plus size={15} /> Dodaj kategorię
             </button>
-          )}
-          {activeTab === 'osiagniecia' && (
+          </>)}
+          {activeTab === 'osiagniecia' && (<>
+            <button onClick={() => downloadCsv('osiagniecia.csv', achievements)}
+              className="flex items-center gap-2 border border-ocean-300 text-ocean-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-ocean-50 transition">
+              <Download size={14} /> CSV
+            </button>
             <button onClick={() => { cancelAchForm(); setShowAchForm(true); }}
               className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-ocean-600 transition">
               <Plus size={15} /> Dodaj osiągnięcie
             </button>
-          )}
+          </>)}
           {activeTab === 'easter-eggi' && (
             <button onClick={() => { cancelEggForm(); setShowEggForm(true); }}
               className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-ocean-600 transition">
