@@ -53,11 +53,21 @@ export default function MapPage() {
   const [sheetOpen, setSheetOpen]         = useState(false);
   const [nearestToast, setNearestToast]   = useState('');
   const [nearestLoading, setNearestLoading] = useState(false);
-  const sheetRef    = useRef<HTMLDivElement>(null);
-  const mapHandle   = useRef<MapHandle | null>(null);
-  const userPosRef  = useRef<[number, number] | null>(null); // cached from watchPosition
-  const router      = useRouter();
-  const { user }    = useAuth();
+  const sheetRef       = useRef<HTMLDivElement>(null);
+  const mapHandle      = useRef<MapHandle | null>(null);
+  const userPosRef     = useRef<[number, number] | null>(null);
+  const geoWatchIdRef  = useRef<number | null>(null);
+  const router         = useRouter();
+  const { user }       = useAuth();
+
+  // Clean up GPS watch when component unmounts
+  useEffect(() => {
+    return () => {
+      if (geoWatchIdRef.current !== null) {
+        navigator.geolocation?.clearWatch(geoWatchIdRef.current);
+      }
+    };
+  }, []);
 
   const load = useCallback(async () => {
     const userId = getUserId();
@@ -88,12 +98,28 @@ export default function MapPage() {
     }
   };
 
-  // ── Center on user — called from tap so iOS sees a user gesture ─────────
+  // ── Center on user ────────────────────────────────────────────────────────
+  // watchPosition is called DIRECTLY inside the onClick handler so iOS Safari
+  // treats it as a user gesture and shows the location-permission dialog.
+  // Any indirection through refs or async chains breaks this on iOS 13+.
   const handleCenterOnUser = () => {
-    // startTracking must be called from a tap handler — this is the only way
-    // iOS Safari will show the location-permission dialog.
-    mapHandle.current?.startTracking(user?.avatarUrl ?? null);
-    // If we already have a cached position, pan there instantly.
+    if (!navigator.geolocation) return;
+
+    // Start watching if not already (direct call = iOS user-gesture context)
+    if (geoWatchIdRef.current === null) {
+      const avatarUrl = user?.avatarUrl ?? null;
+      geoWatchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          userPosRef.current = [latitude, longitude];
+          mapHandle.current?.updateUserMarker(latitude, longitude, avatarUrl);
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
+      );
+    }
+
+    // Pan to last known position instantly; first-fix centering handled in MapComponent
     if (userPosRef.current) {
       mapHandle.current?.panTo(userPosRef.current[0], userPosRef.current[1], 17);
     }
@@ -180,7 +206,6 @@ export default function MapPage() {
         userAvatarUrl={user?.avatarUrl}
         onBuildingClick={handleBuildingClick}
         onMapReady={(h) => { mapHandle.current = h; }}
-        onUserLocation={(lat, lng) => { userPosRef.current = [lat, lng]; }}
       />
 
       {/* Stats pill */}

@@ -16,9 +16,8 @@ export interface MapBuilding {
 export interface MapHandle {
   panTo: (lat: number, lng: number, zoom?: number) => void;
   openBuilding: (id: number) => void;
-  /** Call this directly from a user-gesture handler (button tap) so iOS Safari
-   *  shows the location-permission dialog. Idempotent — safe to call repeatedly. */
-  startTracking: (avatarUrl?: string | null) => void;
+  /** Update (or create) the user-location dot. Call from watchPosition success callback. */
+  updateUserMarker: (lat: number, lng: number, avatarUrl?: string | null) => void;
 }
 
 interface Props {
@@ -257,16 +256,12 @@ export default function MapComponent({
         });
       });
 
-      // ── User location tracking ───────────────────────────────────────────────
-      // startTracking() MUST be called from a user-gesture handler (button tap)
-      // so that iOS Safari shows the location-permission dialog. Calling
-      // watchPosition() automatically (e.g. in useEffect or Promise.then) is
-      // silently ignored by iOS 13+.
+      // ── User-location dot ────────────────────────────────────────────────────
+      // GPS tracking lives in page.tsx (direct onClick = iOS user gesture).
+      // MapComponent only renders the dot when told to via updateUserMarker().
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let userMarker: any = null;
       let firstFix = true;
-      let trackingStarted = false;
-      let geoWatchId: number | null = null;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const buildUserIcon = (avatarUrl?: string | null) => {
@@ -283,44 +278,6 @@ export default function MapComponent({
           html: `<div style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3))">${inner}</div>`,
           iconSize: [28, 28], iconAnchor: [14, 14], className: '',
         });
-      };
-
-      const startGeoTracking = (avatarUrl?: string | null) => {
-        if (!navigator.geolocation) return;
-
-        if (trackingStarted) {
-          // Already tracking — re-center on current marker
-          if (userMarker) {
-            const ll = userMarker.getLatLng();
-            map.setView([ll.lat, ll.lng], map.getZoom());
-          }
-          return;
-        }
-        trackingStarted = true;
-
-        geoWatchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            try {
-              const { latitude, longitude } = pos.coords;
-              if (!userMarker) {
-                userMarker = L.marker([latitude, longitude], {
-                  icon: buildUserIcon(avatarUrl), zIndexOffset: -100,
-                }).addTo(map);
-              } else {
-                userMarker.setLatLng([latitude, longitude]);
-              }
-              if (firstFix) {
-                firstFix = false;
-                map.setView([latitude, longitude], map.getZoom());
-              }
-              onUserLocation?.(latitude, longitude);
-            } catch {
-              // Never let GPS errors crash the map
-            }
-          },
-          () => {},
-          { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
-        );
       };
 
       // Expose imperative handle via callback — works reliably through dynamic()
@@ -350,17 +307,23 @@ export default function MapComponent({
               }
             }
           },
-          startTracking(avatarUrl) {
-            startGeoTracking(avatarUrl);
+          updateUserMarker(lat, lng, avatarUrl) {
+            try {
+              if (!userMarker) {
+                userMarker = L.marker([lat, lng], {
+                  icon: buildUserIcon(avatarUrl), zIndexOffset: -100,
+                }).addTo(map);
+              } else {
+                userMarker.setLatLng([lat, lng]);
+              }
+              if (firstFix) {
+                firstFix = false;
+                map.setView([lat, lng], map.getZoom());
+              }
+            } catch { /* never crash building pins */ }
           },
         });
       }
-
-      const origRemove = map.remove.bind(map);
-      map.remove = () => {
-        if (geoWatchId !== null) navigator.geolocation?.clearWatch(geoWatchId);
-        return origRemove();
-      };
     });
 
     return () => {
