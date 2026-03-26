@@ -153,7 +153,12 @@ export default function MapComponent({
   const containerRef        = useRef<HTMLDivElement>(null);
   const mapRef              = useRef<import('leaflet').Map | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lRef                = useRef<any | null>(null);  // Leaflet module, set after async import
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef          = useRef<{ marker: any; building: MapBuilding }[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userMarkerRef       = useRef<any | null>(null);
+  const firstGeoFixRef      = useRef(true);
   // Ref to the add-markers function; set once Leaflet has loaded
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const addMarkersRef       = useRef<((b: MapBuilding[]) => void) | null>(null);
@@ -161,16 +166,77 @@ export default function MapComponent({
   const buildingsRef        = useRef(buildings);
   // Always reflects the latest onBuildingClick, used inside marker handlers
   const onBuildingClickRef  = useRef(onBuildingClick);
+  // Always reflects the latest userAvatarUrl for the geo effect
+  const userAvatarUrlRef    = useRef(userAvatarUrl);
 
   // Keep refs in sync with props
   useEffect(() => { buildingsRef.current = buildings; }, [buildings]);
   useEffect(() => { onBuildingClickRef.current = onBuildingClick; }, [onBuildingClick]);
+  useEffect(() => { userAvatarUrlRef.current = userAvatarUrl; }, [userAvatarUrl]);
 
   // Re-add building markers whenever the buildings array changes (covers the case where
   // the Leaflet chunk was already cached and the effect ran before the API responded)
   useEffect(() => {
     addMarkersRef.current?.(buildings);
   }, [buildings]);
+
+  // ── Geolocation — separate effect so iOS Safari sees it outside a Promise chain ──
+  // iOS 13+ does not show the permission dialog when watchPosition is called inside
+  // import('leaflet').then(...). Running it in its own useEffect fixes this.
+  useEffect(() => {
+    if (!showUserLocation || !navigator.geolocation) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buildUserIcon = (L: any, avatarUrl?: string | null) => {
+      const inner = avatarUrl
+        ? `<div style="width:28px;height:28px;border-radius:50%;overflow:hidden;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);background:#ddd">
+             <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+           </div>`
+        : `<div style="width:28px;height:28px;border-radius:50%;background:#4A90E2;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+             </svg>
+           </div>`;
+      return L.divIcon({
+        html: `<div style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3))">${inner}</div>`,
+        iconSize: [28, 28], iconAnchor: [14, 14], className: '',
+      });
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          onUserLocation?.(latitude, longitude);
+
+          const L   = lRef.current;
+          const map = mapRef.current;
+          if (!L || !map) return; // Leaflet not yet loaded — position buffered via onUserLocation
+
+          if (!userMarkerRef.current) {
+            userMarkerRef.current = L.marker(
+              [latitude, longitude],
+              { icon: buildUserIcon(L, userAvatarUrlRef.current), zIndexOffset: -100 },
+            ).addTo(map);
+          } else {
+            userMarkerRef.current.setLatLng([latitude, longitude]);
+          }
+
+          if (firstGeoFixRef.current) {
+            firstGeoFixRef.current = false;
+            map.setView([latitude, longitude], map.getZoom());
+          }
+        } catch {
+          // Never let GPS errors crash the map
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showUserLocation]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -197,6 +263,7 @@ export default function MapComponent({
       };
       const map = L.map(containerRef.current, mapOptions).setView(center, zoom);
       mapRef.current = map;
+      lRef.current   = L;
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
@@ -245,60 +312,6 @@ export default function MapComponent({
       // because Leaflet loads asynchronously and buildings may have already arrived
       // from the API by the time this .then() fires.
       addMarkers(buildingsRef.current);
-
-      // User GPS dot — registered AFTER building markers so a synchronous GPS
-      // callback (cached position) can never block building pin creation.
-      if (showUserLocation && navigator.geolocation) {
-        let userMarker: import('leaflet').Marker | null = null;
-        let firstFix = true;
-
-        const buildUserIcon = (avatarUrl?: string | null) => {
-          const inner = avatarUrl
-            ? `<div style="width:28px;height:28px;border-radius:50%;overflow:hidden;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);background:#ddd">
-                 <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" />
-               </div>`
-            : `<div style="width:28px;height:28px;border-radius:50%;background:#4A90E2;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                 </svg>
-               </div>`;
-          return L.divIcon({
-            html: `<div style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3))">${inner}</div>`,
-            iconSize: [28, 28], iconAnchor: [14, 14], className: '',
-          });
-        };
-
-        const watchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            try {
-              const { latitude, longitude } = pos.coords;
-
-              if (!userMarker) {
-                userMarker = L.marker([latitude, longitude], { icon: buildUserIcon(userAvatarUrl), zIndexOffset: -100 }).addTo(map);
-              } else {
-                userMarker.setLatLng([latitude, longitude]);
-              }
-
-              if (firstFix) {
-                firstFix = false;
-                map.setView([latitude, longitude], map.getZoom());
-              }
-
-              onUserLocation?.(latitude, longitude);
-            } catch {
-              // Never let GPS marker errors propagate — building pins must stay intact
-            }
-          },
-          () => {},
-          { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
-        );
-
-        const origRemove = map.remove.bind(map);
-        map.remove = () => {
-          navigator.geolocation.clearWatch(watchId);
-          return origRemove();
-        };
-      }
 
       // Rescale markers on zoom change
       map.on('zoomend', () => {

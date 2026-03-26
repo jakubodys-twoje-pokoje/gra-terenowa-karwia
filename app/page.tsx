@@ -178,7 +178,7 @@ export default function MapPage() {
       <MapComponent
         buildings={mapBuildings}
         height="100%"
-        zoom={19}
+        zoom={21}
         showUserLocation
         userAvatarUrl={user?.avatarUrl}
         onBuildingClick={handleBuildingClick}
