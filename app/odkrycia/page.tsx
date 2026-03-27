@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Compass, Trophy, Medal, Crown } from 'lucide-react';
 import Link from 'next/link';
 import AchievementBadge from '@/components/AchievementBadge';
-import { ACHIEVEMENTS, getUnlockedAchievements } from '@/lib/achievements';
 
 interface Discovery {
   discoveredAt: string;
@@ -265,28 +264,41 @@ function HourChart({ discoveries }: { discoveries: Discovery[] }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+interface AchievementWithStatus {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  unlocked: boolean;
+}
+
 export default function OdkryciaPage() {
   const [discoveries, setDiscoveries] = useState<Discovery[]>([]);
   const [totalBuildings, setTotalBuildings] = useState(0);
   const [ranking, setRanking] = useState<RankEntry[]>([]);
   const [currentUser, setCurrentUser] = useState<RankEntry | null>(null);
+  const [achievements, setAchievements] = useState<AchievementWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'stats' | 'odznaki' | 'ranking'>('stats');
 
   const load = useCallback(async () => {
     const userId = getUserId();
-    const [discRes, allRes, rankRes] = await Promise.all([
+    const [discRes, allRes, rankRes, achRes] = await Promise.all([
       fetch(`/api/odkrycia?userId=${userId}`),
       fetch('/api/budynki'),
       fetch(`/api/ranking?userId=${userId}`),
+      fetch(`/api/osiagniecia?userId=${userId}`),
     ]);
     const disc: Discovery[] = discRes.ok ? await discRes.json() : [];
     const all = allRes.ok ? await allRes.json() : [];
     const rankData = rankRes.ok ? await rankRes.json() : { ranking: [], currentUser: null };
+    const achs: AchievementWithStatus[] = achRes.ok ? await achRes.json() : [];
     setDiscoveries(disc);
     setTotalBuildings(all.length);
     setRanking(rankData.ranking ?? []);
     setCurrentUser(rankData.currentUser ?? null);
+    setAchievements(Array.isArray(achs) ? achs : []);
     setLoading(false);
   }, []);
 
@@ -295,8 +307,7 @@ export default function OdkryciaPage() {
   const count = discoveries.length;
   const pct = totalBuildings > 0 ? Math.round((count / totalBuildings) * 100) : 0;
   const categories = discoveries.map((d) => d.building.category);
-  const unlockedAchievements = getUnlockedAchievements(count, totalBuildings, categories);
-  const unlockedIds = new Set(unlockedAchievements.map((a) => a.id));
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
   const streak = calcStreak(discoveries);
   const kmTotal = calcKm(discoveries);
@@ -361,10 +372,10 @@ export default function OdkryciaPage() {
                 <DonutRing pct={pct} count={count} total={totalBuildings} />
                 <div className="w-full mt-4 bg-gray-100 rounded-full h-1.5 overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-sand-400 to-sand-600 rounded-full transition-all duration-700"
-                    style={{ width: `${ACHIEVEMENTS.length > 0 ? (unlockedIds.size / ACHIEVEMENTS.length) * 100 : 0}%` }} />
+                    style={{ width: `${achievements.length > 0 ? (unlockedCount / achievements.length) * 100 : 0}%` }} />
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1 self-end">
-                  {unlockedIds.size} / {ACHIEVEMENTS.length} odznak
+                  {unlockedCount} / {achievements.length} odznak
                 </p>
               </div>
 
@@ -442,14 +453,14 @@ export default function OdkryciaPage() {
       {/* ── ODZNAKI TAB ── */}
       {!loading && activeTab === 'odznaki' && (
         <div className="grid grid-cols-2 gap-3 pb-4">
-          {ACHIEVEMENTS.map((a) => (
+          {achievements.map((a) => (
             <AchievementBadge
               key={a.id}
               icon={a.icon}
               name={a.name}
               description={a.description}
               color={a.color}
-              unlocked={unlockedIds.has(a.id)}
+              unlocked={a.unlocked}
             />
           ))}
         </div>
