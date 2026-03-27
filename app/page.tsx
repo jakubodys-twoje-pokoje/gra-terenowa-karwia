@@ -48,6 +48,94 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ── Behavioural tip generator ─────────────────────────────────────────────────
+function generateTip(
+  buildings: Building[],
+  discoveredIds: Set<number>,
+  userPos: [number, number] | null,
+  leaderNickname: string | null,
+  isGuest: boolean,
+): { text: string; icon: string } | null {
+  const total = buildings.length;
+  if (total === 0) return null;
+
+  const discovered = discoveredIds.size;
+  const remaining  = total - discovered;
+  type C = { text: string; icon: string; w: number };
+  const pool: C[] = [];
+
+  // ── GPS proximity
+  if (userPos && remaining > 0) {
+    const undiscovered = buildings.filter((b) => !discoveredIds.has(b.id));
+    let nearest = undiscovered[0];
+    let minDist = haversineKm(userPos[0], userPos[1], nearest.lat, nearest.lng);
+    for (const b of undiscovered) {
+      const d = haversineKm(userPos[0], userPos[1], b.lat, b.lng);
+      if (d < minDist) { minDist = d; nearest = b; }
+    }
+    if (minDist < 0.15) {
+      pool.push({ text: `Jesteś ${Math.round(minDist * 1000)} m od nieodkrytego miejsca — już prawie!`, icon: '🎯', w: 6 });
+    } else if (minDist < 0.5) {
+      pool.push({ text: `Tylko ${Math.round(minDist * 1000)} m do najbliższego nieodkrytego miejsca`, icon: '📍', w: 4 });
+    } else if (minDist < 1.5) {
+      pool.push({ text: `Najbliższe nieodkryte miejsce jest ${Math.round(minDist * 1000)} m stąd`, icon: '🧭', w: 2 });
+    }
+  }
+
+  // ── Almost done
+  if (remaining === 0) {
+    pool.push({ text: 'Odkryłeś wszystkie miejsca w Karwi! Jesteś legendą!', icon: '🎉', w: 10 });
+  } else if (remaining === 1) {
+    pool.push({ text: 'Zostało Ci tylko 1 nieodkryte miejsce — idź po nie!', icon: '🏆', w: 6 });
+  } else if (remaining === 2) {
+    pool.push({ text: 'Tylko 2 miejsca dzielą Cię od kompletnej kolekcji!', icon: '🌟', w: 4 });
+  } else if (remaining <= 5) {
+    pool.push({ text: `Zostało Ci tylko ${remaining} miejsc — koniec blisko!`, icon: '⚡', w: 3 });
+  }
+
+  // ── Category completion hints
+  for (const [cat, label] of Object.entries(CATEGORY_LABELS)) {
+    const catBuildings  = buildings.filter((b) => b.category === cat);
+    if (catBuildings.length < 2) continue;
+    const catDiscovered = catBuildings.filter((b) => discoveredIds.has(b.id)).length;
+    const catRemaining  = catBuildings.length - catDiscovered;
+    if (catDiscovered > 0 && catRemaining === 1) {
+      pool.push({ text: `Jedno miejsce do kompletu w kategorii ${label}!`, icon: '📌', w: 3 });
+    } else if (catDiscovered > 0 && catRemaining > 0 && catRemaining <= 3) {
+      pool.push({ text: `${label}: brakuje Ci ${catRemaining} miejsc do kompletu`, icon: '📊', w: 1 });
+    }
+  }
+
+  // ── Progress
+  if (discovered > 0 && remaining > 0) {
+    const pct = Math.round((discovered / total) * 100);
+    pool.push({ text: `Odkryłeś ${discovered} z ${total} miejsc — ${pct}% Karwii zbadane!`, icon: '🗺️', w: 1 });
+  }
+
+  // ── Leaderboard
+  if (leaderNickname) {
+    pool.push({ text: `${leaderNickname} prowadzi w rankingu — spróbuj go dogonić!`, icon: '🥇', w: 1 });
+  }
+
+  // ── Generic
+  if (remaining > 0) {
+    pool.push({ text: `Karwia kryje jeszcze ${remaining} nieodkrytych tajemnic...`, icon: '🔍', w: 1 });
+  }
+
+  // ── Guest nudge
+  if (isGuest && discovered >= 3) {
+    pool.push({ text: 'Zarejestruj się, żeby zachować swoje odkrycia na zawsze!', icon: '💾', w: 1 });
+  }
+
+  if (pool.length === 0) return null;
+
+  const totalW = pool.reduce((s, c) => s + c.w, 0);
+  let r = Math.random() * totalW;
+  for (const c of pool) { r -= c.w; if (r <= 0) return { text: c.text, icon: c.icon }; }
+  return pool[pool.length - 1];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export default function MapPage() {
   const [buildings, setBuildings]         = useState<Building[]>([]);
   const [discoveredIds, setDiscoveredIds] = useState<Set<number>>(new Set());
@@ -56,19 +144,25 @@ export default function MapPage() {
   const [nearestToast, setNearestToast]   = useState('');
   const [nearestLoading, setNearestLoading] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [activeTip, setActiveTip]         = useState<{ text: string; icon: string } | null>(null);
+  const [leaderNickname, setLeaderNickname] = useState<string | null>(null);
   const sheetRef       = useRef<HTMLDivElement>(null);
   const mapHandle      = useRef<MapHandle | null>(null);
   const userPosRef     = useRef<[number, number] | null>(null);
   const geoWatchIdRef  = useRef<number | null>(null);
+  const tipTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router         = useRouter();
   const { user }       = useAuth();
 
-  // Clean up GPS watch when component unmounts
+  // Always-fresh snapshot for timer callbacks (avoids stale closure)
+  const snapRef = useRef({ buildings, discoveredIds, sheetOpen, showInstructions, leaderNickname, user });
+  snapRef.current = { buildings, discoveredIds, sheetOpen, showInstructions, leaderNickname, user };
+
+  // Clean up GPS watch + tip timer when component unmounts
   useEffect(() => {
     return () => {
-      if (geoWatchIdRef.current !== null) {
-        navigator.geolocation?.clearWatch(geoWatchIdRef.current);
-      }
+      if (geoWatchIdRef.current !== null) navigator.geolocation?.clearWatch(geoWatchIdRef.current);
+      if (tipTimerRef.current !== null) clearTimeout(tipTimerRef.current);
     };
   }, []);
 
@@ -86,14 +180,29 @@ export default function MapPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Show instructions on first visit — but only if welcome modal won't also appear
+  // Fetch top leaderboard name for tips
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    fetch('/api/ranking')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.ranking?.[0]?.nickname) setLeaderNickname(data.ranking[0].nickname); })
+      .catch(() => {});
+  }, []);
+
+  // Show instructions after welcome modal is dismissed (guest flow)
+  useEffect(() => {
+    const onDismissed = () => {
+      if (!localStorage.getItem('karwia_instructions_shown')) {
+        setTimeout(() => setShowInstructions(true), 380);
+      }
+    };
+    window.addEventListener('karwia:welcome-dismissed', onDismissed);
+    return () => window.removeEventListener('karwia:welcome-dismissed', onDismissed);
+  }, []);
+
+  // Show instructions for logged-in users on first visit (no welcome modal shown to them)
+  useEffect(() => {
+    if (!user) return;
     if (localStorage.getItem('karwia_instructions_shown')) return;
-    // WelcomeModal shows for non-logged-in users who haven't dismissed it this session.
-    // Avoid stacking two popups — let WelcomeModal go first; user can use ? button for instructions.
-    const welcomeDismissed = sessionStorage.getItem('karwia_welcomed');
-    if (!welcomeDismissed && !user) return;
     setShowInstructions(true);
   }, [user]);
 
@@ -101,6 +210,31 @@ export default function MapPage() {
     localStorage.setItem('karwia_instructions_shown', '1');
     setShowInstructions(false);
   };
+
+  // ── Behavioural tip rotation ─────────────────────────────────────────────────
+  useEffect(() => {
+    const TIP_SHOW_MS  = 6500;
+    const MIN_DELAY_MS = 35_000;
+    const MAX_DELAY_MS = 80_000;
+    const FIRST_MS     = 22_000;
+
+    const schedule = (delayMs: number) => {
+      tipTimerRef.current = setTimeout(() => {
+        const { buildings, discoveredIds, sheetOpen, showInstructions, leaderNickname, user } = snapRef.current;
+        if (!sheetOpen && !showInstructions) {
+          const tip = generateTip(buildings, discoveredIds, userPosRef.current, leaderNickname, !user);
+          if (tip) {
+            setActiveTip(tip);
+            setTimeout(() => setActiveTip(null), TIP_SHOW_MS);
+          }
+        }
+        schedule(MIN_DELAY_MS + Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS));
+      }, delayMs);
+    };
+
+    schedule(FIRST_MS + Math.random() * 8_000);
+    return () => { if (tipTimerRef.current) clearTimeout(tipTimerRef.current); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBuildingClick = useCallback((id: number) => {
     const b = buildings.find((x) => x.id === id);
@@ -234,6 +368,16 @@ export default function MapPage() {
           <span className="text-xs font-bold text-ocean-900">
             {discoveredIds.size} / {buildings.length} odkrytych
           </span>
+        </div>
+      )}
+
+      {/* Behavioural tip bubble */}
+      {activeTip && (
+        <div className="absolute top-[3.25rem] left-1/2 -translate-x-1/2 z-[499] pointer-events-none animate-in fade-in slide-in-from-top-1 duration-300">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-md px-3 py-2 flex items-center gap-2 max-w-[260px]">
+            <span className="text-sm shrink-0">{activeTip.icon}</span>
+            <p className="text-[11px] font-semibold text-ocean-900 leading-snug">{activeTip.text}</p>
+          </div>
         </div>
       )}
 

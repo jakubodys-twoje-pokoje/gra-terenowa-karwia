@@ -47,6 +47,7 @@ export default function WelcomeModal() {
 
   const dismiss = () => {
     sessionStorage.setItem(STORAGE_KEY, '1');
+    window.dispatchEvent(new CustomEvent('karwia:welcome-dismissed'));
     setAnimateIn(false);
     setTimeout(() => setVisible(false), 320);
   };
