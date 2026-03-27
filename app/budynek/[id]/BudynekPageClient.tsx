@@ -227,8 +227,8 @@ export default function BudynekPage() {
           <span className={clsx('text-xs font-semibold px-2.5 py-1 rounded-full', CATEGORY_LABELS[building.category]?.color ?? 'bg-gray-100 text-gray-600')}>
             {CATEGORY_LABELS[building.category]?.label ?? building.category}
           </span>
-          <h1 className="text-2xl font-extrabold text-ocean-900 mt-2 leading-tight">???</h1>
-          <p className="text-gray-400 text-sm mt-1">Lokalizacja nieznana</p>
+          <h1 className="text-2xl font-extrabold text-ocean-900 mt-2 leading-tight">{building.name}</h1>
+          <p className="text-gray-400 text-sm mt-1">Lokalizacja nieznana — odkryj, by zobaczyć szczegóły</p>
 
           <div className="bg-ocean-50 border border-ocean-100 rounded-3xl p-5 mt-4 text-center flex flex-col items-center gap-3">
             <div className="w-14 h-14 rounded-full bg-ocean-100 flex items-center justify-center">
