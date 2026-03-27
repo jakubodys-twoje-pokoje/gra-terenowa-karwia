@@ -28,7 +28,8 @@ function isUnlocked(
     }
 
     case 'building_set': {
-      const ids: number[] = JSON.parse(a.buildingIds ?? '[]');
+      let ids: number[] = [];
+      try { ids = JSON.parse(a.buildingIds ?? '[]'); } catch { ids = []; }
       const found = ids.filter((id) => discoveredBuildingIds.has(id)).length;
       return found >= a.conditionValue;
     }
@@ -73,7 +74,7 @@ export async function GET(req: NextRequest) {
     ]);
   } catch (err) {
     console.error('[/api/osiagniecia] DB error:', err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'Błąd serwera — spróbuj ponownie' }, { status: 500 });
   }
 
   if (allAchievements.length === 0) return NextResponse.json([]);

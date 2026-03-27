@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'karwia2024';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 
 // GET /api/content?key=regulamin
 export async function GET(req: NextRequest) {

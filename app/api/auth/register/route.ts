@@ -11,7 +11,8 @@ function makeToken(): string {
 }
 
 export async function POST(req: NextRequest) {
-  const { email, password, nickname, city, guestUserId } = await req.json();
+  const { email: rawEmail, password, nickname, city, guestUserId } = await req.json();
+  const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : rawEmail;
 
   if (!email || !password) return NextResponse.json({ error: 'Email i hasło są wymagane' }, { status: 400 });
   if (password.length < 6) return NextResponse.json({ error: 'Hasło musi mieć min. 6 znaków' }, { status: 400 });

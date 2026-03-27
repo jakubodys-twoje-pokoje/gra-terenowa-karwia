@@ -4,7 +4,8 @@ import { prisma } from '@/lib/db';
 import { signSession, sessionCookieOptions } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
-  const { email, password } = await req.json();
+  const { email: rawEmail, password } = await req.json();
+  const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : rawEmail;
 
   if (!email || !password) return NextResponse.json({ error: 'Uzupełnij email i hasło' }, { status: 400 });
 
