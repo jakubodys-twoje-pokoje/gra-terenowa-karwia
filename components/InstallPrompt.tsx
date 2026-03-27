@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Share, Plus, Download, Smartphone } from 'lucide-react';
+import { Share, Plus, Download, Smartphone } from 'lucide-react';
 
 type Platform = 'android' | 'ios' | null;
 
@@ -78,7 +78,7 @@ export default function InstallPrompt() {
     const t = setTimeout(() => {
       setVisible(true);
       requestAnimationFrame(() => setAnimateIn(true));
-    }, 90_000);
+    }, 120_000);
     return () => clearTimeout(t);
   }
 
@@ -125,14 +125,6 @@ export default function InstallPrompt() {
         <div className="md:hidden flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
-
-        {/* Close */}
-        <button
-          onClick={dismiss}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition"
-        >
-          <X size={16} />
-        </button>
 
         {/* Hero */}
         <div className="bg-gradient-to-br from-ocean-500 to-ocean-700 mx-4 mt-2 rounded-2xl px-5 py-4 text-white flex items-center gap-3">
