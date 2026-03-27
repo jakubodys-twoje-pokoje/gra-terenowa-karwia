@@ -5,6 +5,49 @@ const adapter = new PrismaBetterSqlite3({ url: './prisma/dev.db' });
 const prisma = new PrismaClient({ adapter });
 
 const achievements = [
+  // ── Total count ─────────────────────────────────────────────────────────────
+  {
+    name: 'Pierwszy trop',
+    description: 'Odkryj swoje pierwsze miejsce w Karwi',
+    icon: '👣', color: '#2A8EC9',
+    conditionType: 'total_count', conditionValue: 1, conditionCategory: null, buildingIds: null, order: 1,
+  },
+  {
+    name: 'Młody odkrywca Karwi',
+    description: 'Odkryj 3 miejsca',
+    icon: '🔭', color: '#0F5F92',
+    conditionType: 'total_count', conditionValue: 3, conditionCategory: null, buildingIds: null, order: 2,
+  },
+  {
+    name: 'Poszukiwacz historii',
+    description: 'Odkryj 5 miejsc',
+    icon: '🗺️', color: '#F0A500',
+    conditionType: 'total_count', conditionValue: 5, conditionCategory: null, buildingIds: null, order: 3,
+  },
+  {
+    name: 'Znawca Karwi',
+    description: 'Odkryj 10 miejsc',
+    icon: '⭐', color: '#F0A500',
+    conditionType: 'total_count', conditionValue: 10, conditionCategory: null, buildingIds: null, order: 4,
+  },
+  {
+    name: 'Lokalny eksplorator',
+    description: 'Odkryj 15 miejsc',
+    icon: '🏅', color: '#C27D00',
+    conditionType: 'total_count', conditionValue: 15, conditionCategory: null, buildingIds: null, order: 5,
+  },
+  {
+    name: 'Mistrz szlaku',
+    description: 'Odkryj 20 miejsc',
+    icon: '🏆', color: '#C27D00',
+    conditionType: 'total_count', conditionValue: 20, conditionCategory: null, buildingIds: null, order: 6,
+  },
+  {
+    name: 'Legenda Karwi',
+    description: 'Odkryj wszystkie miejsca w Karwi!',
+    icon: '👑', color: '#C27D00',
+    conditionType: 'total_all', conditionValue: 0, conditionCategory: null, buildingIds: null, order: 7,
+  },
   // ── Time-based ──────────────────────────────────────────────────────────────
   {
     name: 'Dobry początek',
