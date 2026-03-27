@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { User, Save, Check, Camera, Loader2, LogOut, Lock, Mail, RefreshCw, Key, Trash2, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { User, Save, Check, Camera, Loader2, LogOut, Lock, Mail, RefreshCw, Key, Trash2, Eye, EyeOff, AlertTriangle, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, logout, fetchMe } from '@/lib/useAuth';
@@ -205,6 +205,18 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadError('');
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Nieobsługiwany format pliku — użyj JPG, PNG lub WebP.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError(`Zdjęcie jest za duże (${(file.size / (1024 * 1024)).toFixed(1)} MB) — limit to 5 MB.`);
+      e.target.value = '';
+      return;
+    }
+
     const preview = URL.createObjectURL(file);
     setAvatarUrl(preview);
     setUploadProgress(0);
@@ -347,7 +359,16 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
         <button type="button" onClick={() => fileInputRef.current?.click()} className="relative group" disabled={uploadingAvatar}>
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-ocean-200 shadow-lg" />
+            <img
+              src={avatarUrl}
+              alt="Avatar"
+              className="w-24 h-24 rounded-full object-cover border-4 border-ocean-200 shadow-lg"
+              onError={() => {
+                if (avatarUrl.startsWith('blob:')) URL.revokeObjectURL(avatarUrl);
+                setAvatarUrl(null);
+                setUploadError('Nie udało się załadować zdjęcia — sprawdź połączenie i spróbuj ponownie.');
+              }}
+            />
           ) : (
             <div className="w-24 h-24 rounded-full bg-ocean-100 border-4 border-ocean-200 shadow-lg flex items-center justify-center">
               <User size={36} className="text-ocean-300" />
@@ -377,7 +398,13 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
 
         {/* Upload error */}
         {uploadError && (
-          <p className="text-red-500 text-xs text-center bg-red-50 px-3 py-2 rounded-xl max-w-[220px]">{uploadError}</p>
+          <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2.5 rounded-2xl w-full max-w-[280px]">
+            <AlertTriangle size={14} className="shrink-0 mt-0.5 text-red-500" />
+            <span className="flex-1 leading-snug">{uploadError}</span>
+            <button type="button" onClick={() => setUploadError('')} className="shrink-0 text-red-400 hover:text-red-600 ml-1">
+              <X size={14} />
+            </button>
+          </div>
         )}
 
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
