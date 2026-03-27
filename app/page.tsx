@@ -23,12 +23,14 @@ interface Building {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  beach: '🏖️ Plaża',
-  landmark: '🏛️ Zabytek',
-  food: '🐟 Jedzenie',
-  hotel: '🏨 Nocleg',
-  attraction: '⭐ Atrakcja',
-  nature: '🌿 Natura',
+  checza:    '🛖 Chëcza',
+  zagroda:   '🏡 Zagroda',
+  karczma:   '🍺 Karczma',
+  pensjonat: '🏨 Pensjonat',
+  sakralny:  '⛪ Sakralny',
+  natura:    '🌲 Natura',
+  morze:     '🐟 Morze',
+  historia:  '🏛️ Historia',
 };
 
 function getUserId(): string {

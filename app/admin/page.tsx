@@ -46,18 +46,20 @@ const TRIGGER_TYPES = [
 ];
 
 const CATEGORIES = [
-  { value: 'beach',      label: '🏖️ Plaża' },
-  { value: 'landmark',   label: '🏛️ Zabytek' },
-  { value: 'food',       label: '🐟 Jedzenie' },
-  { value: 'hotel',      label: '🏨 Nocleg' },
-  { value: 'attraction', label: '⭐ Atrakcja' },
-  { value: 'nature',     label: '🌿 Natura' },
+  { value: 'checza',    label: '🛖 Chëcza' },
+  { value: 'zagroda',   label: '🏡 Zagroda' },
+  { value: 'karczma',   label: '🍺 Karczma' },
+  { value: 'pensjonat', label: '🏨 Pensjonat' },
+  { value: 'sakralny',  label: '⛪ Sakralny' },
+  { value: 'natura',    label: '🌲 Natura' },
+  { value: 'morze',     label: '🐟 Morze' },
+  { value: 'historia',  label: '🏛️ Historia' },
 ];
 
 const EMPTY_FORM = {
   name: '', description: '', address: '',
   lat: '54.7505', lng: '17.8670',
-  imageUrl: '', outlineImageUrl: '', qrUrl: '', category: 'landmark',
+  imageUrl: '', outlineImageUrl: '', qrUrl: '', category: 'historia',
   hidden: false, published: true,
 };
 

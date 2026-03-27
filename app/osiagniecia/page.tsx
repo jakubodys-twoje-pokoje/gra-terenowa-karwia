@@ -25,6 +25,7 @@ function getUserId(): string {
 export default function OsiagnieciaPage() {
   const [achievements, setAchievements] = useState<AchievementWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [discoveredCount, setDiscoveredCount] = useState(0);
   const [totalBuildings, setTotalBuildings] = useState(0);
 
@@ -36,7 +37,14 @@ export default function OsiagnieciaPage() {
       fetch('/api/budynki'),
     ]);
 
-    const fetchedAchievements: AchievementWithStatus[] = achRes.ok ? await achRes.json() : [];
+    if (!achRes.ok) {
+      const errText = await achRes.text();
+      console.error('[osiagniecia] API error:', achRes.status, errText);
+      setError(`Błąd ładowania osiągnięć (${achRes.status}): ${errText}`);
+      setLoading(false);
+      return;
+    }
+    const fetchedAchievements: AchievementWithStatus[] = await achRes.json();
     const discoveries = discRes.ok ? await discRes.json() : [];
     const allBuildings = allRes.ok ? await allRes.json() : [];
 
@@ -100,6 +108,12 @@ export default function OsiagnieciaPage() {
       {loading && (
         <div className="flex justify-center py-16">
           <div className="w-8 h-8 border-3 border-ocean-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4 text-red-700 text-sm">
+          {error}
         </div>
       )}
 

@@ -3,12 +3,14 @@ import { MapPin, Check, Lock } from 'lucide-react';
 import clsx from 'clsx';
 
 const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
-  beach:      { label: '🏖️ Plaża',     color: 'bg-cyan-100 text-cyan-700' },
-  landmark:   { label: '🏛️ Zabytek',   color: 'bg-blue-100 text-blue-700' },
-  food:       { label: '🐟 Jedzenie',  color: 'bg-orange-100 text-orange-700' },
-  hotel:      { label: '🏨 Nocleg',    color: 'bg-purple-100 text-purple-700' },
-  attraction: { label: '⭐ Atrakcja',  color: 'bg-yellow-100 text-yellow-700' },
-  nature:     { label: '🌿 Natura',    color: 'bg-green-100 text-green-700' },
+  checza:    { label: '🛖 Chëcza',    color: 'bg-amber-100 text-amber-800' },
+  zagroda:   { label: '🏡 Zagroda',   color: 'bg-yellow-100 text-yellow-800' },
+  karczma:   { label: '🍺 Karczma',   color: 'bg-orange-100 text-orange-700' },
+  pensjonat: { label: '🏨 Pensjonat', color: 'bg-purple-100 text-purple-700' },
+  sakralny:  { label: '⛪ Sakralny',  color: 'bg-blue-100 text-blue-700' },
+  natura:    { label: '🌲 Natura',    color: 'bg-green-100 text-green-700' },
+  morze:     { label: '🐟 Morze',     color: 'bg-cyan-100 text-cyan-700' },
+  historia:  { label: '🏛️ Historia',  color: 'bg-stone-100 text-stone-700' },
 };
 
 interface Props {

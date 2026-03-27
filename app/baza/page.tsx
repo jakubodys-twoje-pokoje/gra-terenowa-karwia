@@ -14,12 +14,14 @@ interface Building {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  beach:      '🏖️ Plaża',
-  landmark:   '🏛️ Zabytki',
-  food:       '🐟 Jedzenie',
-  hotel:      '🏨 Noclegi',
-  attraction: '⭐ Atrakcje',
-  nature:     '🌿 Natura',
+  checza:    '🛖 Chëcze',
+  zagroda:   '🏡 Zagrody',
+  karczma:   '🍺 Karczmy',
+  pensjonat: '🏨 Pensjonaty',
+  sakralny:  '⛪ Sakralne',
+  natura:    '🌲 Natura',
+  morze:     '🐟 Morze',
+  historia:  '🏛️ Historia',
 };
 
 type Filter = 'all' | 'discovered' | 'undiscovered';

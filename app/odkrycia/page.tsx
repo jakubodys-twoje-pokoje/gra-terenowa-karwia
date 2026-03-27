@@ -149,12 +149,14 @@ function DonutRing({ pct, count, total }: { pct: number; count: number; total: n
 
 // ── Category bars ─────────────────────────────────────────────────────────────
 const CAT_CONFIG: Record<string, { label: string; emoji: string; color: string }> = {
-  beach:      { label: 'Plaża',    emoji: '🏖️', color: '#06B6D4' },
-  landmark:   { label: 'Zabytki',  emoji: '🏛️', color: '#3B82F6' },
-  food:       { label: 'Jedzenie', emoji: '🐟', color: '#F97316' },
-  hotel:      { label: 'Nocleg',   emoji: '🏨', color: '#A855F7' },
-  attraction: { label: 'Atrakcja', emoji: '⭐', color: '#EAB308' },
-  nature:     { label: 'Natura',   emoji: '🌿', color: '#22C55E' },
+  checza:    { label: 'Chëcze',    emoji: '🛖', color: '#D97706' },
+  zagroda:   { label: 'Zagrody',   emoji: '🏡', color: '#CA8A04' },
+  karczma:   { label: 'Karczmy',   emoji: '🍺', color: '#F97316' },
+  pensjonat: { label: 'Pensjonaty',emoji: '🏨', color: '#A855F7' },
+  sakralny:  { label: 'Sakralne',  emoji: '⛪', color: '#3B82F6' },
+  natura:    { label: 'Natura',    emoji: '🌲', color: '#22C55E' },
+  morze:     { label: 'Morze',     emoji: '🐟', color: '#06B6D4' },
+  historia:  { label: 'Historia',  emoji: '🏛️', color: '#78716C' },
 };
 
 function CategoryBars({ categories }: { categories: string[] }) {

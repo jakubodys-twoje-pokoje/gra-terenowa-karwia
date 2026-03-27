@@ -64,10 +64,17 @@ function isUnlocked(
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId');
 
-  const [allAchievements, totalBuildings] = await Promise.all([
-    prisma.achievement.findMany({ orderBy: { order: 'asc' } }),
-    prisma.building.count({ where: { published: true } }),
-  ]);
+  let allAchievements: Awaited<ReturnType<typeof prisma.achievement.findMany>>;
+  let totalBuildings: number;
+  try {
+    [allAchievements, totalBuildings] = await Promise.all([
+      prisma.achievement.findMany({ orderBy: { order: 'asc' } }),
+      prisma.building.count({ where: { published: true } }),
+    ]);
+  } catch (err) {
+    console.error('[/api/osiagniecia] DB error:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 
   if (allAchievements.length === 0) return NextResponse.json([]);
 
