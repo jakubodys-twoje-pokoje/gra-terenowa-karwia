@@ -10,7 +10,7 @@ const STORAGE_KEY = 'karwia_welcomed';
 
 const BENEFITS = [
   { icon: Smartphone, text: 'Zachowaj postęp na każdym urządzeniu' },
-  { icon: Trophy,     text: 'Dołącz do rankingu odkrywców Karwii' },
+  { icon: Trophy,     text: 'Dołącz do rankingu odkrywców Karwi' },
   { icon: MapPin,     text: 'Zbieraj odznaki i śledź trasę odkryć' },
 ];
 

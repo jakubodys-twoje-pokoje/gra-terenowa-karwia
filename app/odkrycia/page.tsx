@@ -358,7 +358,7 @@ export default function OdkryciaPage() {
             <div className="text-center py-10 px-4">
               <div className="text-5xl mb-3">🗺️</div>
               <p className="text-ocean-900 font-bold mb-2">Zacznij eksplorować!</p>
-              <p className="text-gray-400 text-sm mb-4">Znajdź kod QR przy budynku w Karwii i go zeskanuj.</p>
+              <p className="text-gray-400 text-sm mb-4">Znajdź kod QR przy budynku w Karwi i go zeskanuj.</p>
               <Link href="/skanuj">
                 <button className="bg-ocean-500 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-ocean-500/30">
                   Skanuj pierwszy kod QR

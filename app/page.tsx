@@ -109,7 +109,7 @@ function generateTip(
   // ── Progress
   if (discovered > 0 && remaining > 0) {
     const pct = Math.round((discovered / total) * 100);
-    pool.push({ text: `Odkryłeś ${discovered} z ${total} miejsc — ${pct}% Karwii zbadane!`, icon: '🗺️', w: 1 });
+    pool.push({ text: `Odkryłeś ${discovered} z ${total} miejsc — ${pct}% Karwi zbadane!`, icon: '🗺️', w: 1 });
   }
 
   // ── Leaderboard

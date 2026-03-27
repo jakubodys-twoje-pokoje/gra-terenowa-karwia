@@ -328,7 +328,7 @@ export default function BudynekPage() {
         <button
           onClick={() => {
             const url = `${window.location.origin}/budynek/${building.id}`;
-            const text = `Właśnie odkryłem ${building.name} w Karwii! Dołącz do gry terenowej ⚓`;
+            const text = `Właśnie odkryłem ${building.name} w Karwi! Dołącz do gry terenowej ⚓`;
             if (navigator.share) {
               navigator.share({ title: text, url });
             } else {
@@ -448,10 +448,10 @@ export default function BudynekPage() {
             </div>
             <div className="px-6 py-5 text-center">
               <p className="text-ocean-900 font-extrabold text-xl leading-tight">{newAchievements.join(' & ')}</p>
-              <p className="text-gray-400 text-sm mt-2">Świetna robota! Kontynuuj eksplorację Karwii.</p>
+              <p className="text-gray-400 text-sm mt-2">Świetna robota! Kontynuuj eksplorację Karwi.</p>
               <button
                 onClick={() => {
-                  const text = `Właśnie zdobyłem odznakę „${newAchievements.join(' & ')}" w grze terenowej w Karwii! Dołącz do zabawy 🏆`;
+                  const text = `Właśnie zdobyłem odznakę „${newAchievements.join(' & ')}" w grze terenowej w Karwi! Dołącz do zabawy 🏆`;
                   const url = `${window.location.origin}/budynek/${building.id}`;
                   if (navigator.share) {
                     navigator.share({ title: text, text, url }).catch(() => {});
