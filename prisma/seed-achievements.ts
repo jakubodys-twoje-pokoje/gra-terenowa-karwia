@@ -1,7 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 
-const adapter = new PrismaBetterSqlite3({ url: './prisma/dev.db' });
+const raw = process.env.DATABASE_URL ?? 'file:./prisma/dev.db';
+const dbUrl = raw.startsWith('file:') ? raw.slice(5) : raw;
+const adapter = new PrismaBetterSqlite3({ url: dbUrl });
 const prisma = new PrismaClient({ adapter });
 
 const achievements = [
