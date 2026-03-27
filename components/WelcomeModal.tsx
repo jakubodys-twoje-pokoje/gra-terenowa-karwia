@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/useAuth';
+import PartnerLogos from '@/components/PartnerLogos';
 import { UserPlus, LogIn, ArrowRight, MapPin, Trophy, Smartphone } from 'lucide-react';
 
 const STORAGE_KEY = 'karwia_welcomed';
@@ -144,11 +145,7 @@ export default function WelcomeModal() {
           </button>
         </div>
 
-        {/* Twoje Pokoje branding */}
-        <div className="flex justify-center pb-5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-7 w-auto" />
-        </div>
+        <PartnerLogos logoHeight="h-7" />
       </div>
     </>
   );

@@ -5,6 +5,7 @@ import { User, Save, Check, Camera, Loader2, LogOut, Lock, Mail, RefreshCw, Key,
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, logout, fetchMe } from '@/lib/useAuth';
+import PartnerLogos from '@/components/PartnerLogos';
 
 // Generate a stable display number from UUID
 function guestNumber(userId: string): string {
@@ -71,14 +72,7 @@ function GuestView({ onRegister }: { onRegister: () => void }) {
         Zarejestruj się, by zapisać dane
       </button>
 
-      {/* Twoje Pokoje branding */}
-      <div className="mt-8 mb-4 flex flex-col items-center gap-2">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Partner projektu</p>
-        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-10 w-auto" />
-        </a>
-      </div>
+      <PartnerLogos logoHeight="h-8" />
 
       {/* Popup */}
       {showPopup && (
@@ -559,14 +553,7 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
         </div>
       )}
 
-      {/* Twoje Pokoje branding */}
-      <div className="mt-8 mb-4 flex flex-col items-center gap-2">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Partner projektu</p>
-        <a href="https://www.twojepokoje.com.pl" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/twoje-pokoje-logo.png" alt="Twoje Pokoje" className="h-10 w-auto" />
-        </a>
-      </div>
+      <PartnerLogos logoHeight="h-8" />
 
       <p className="text-center text-[11px] text-gray-300 mb-6 leading-relaxed">
         <Link href="/regulamin" className="text-gray-400 underline">Regulamin</Link>
