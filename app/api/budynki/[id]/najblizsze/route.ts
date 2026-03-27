@@ -8,7 +8,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const all = await prisma.building.findMany({
     where: { id: { not: building.id }, published: true },
-    select: { id: true, name: true, lat: true, lng: true, category: true, imageUrl: true },
+    select: { id: true, name: true, lat: true, lng: true, category: true, imageUrl: true, outlineImageUrl: true },
   });
 
   const withDistance = all

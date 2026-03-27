@@ -836,10 +836,31 @@ export default function AdminPage() {
           {/* ── UŻYTKOWNICY list ── */}
           {activeTab === 'uzytkownicy' && (
             <div className="px-4 py-4">
-              <div className="bg-white rounded-xl px-4 py-2.5 mb-3 text-xs text-gray-500 flex gap-4 shadow-sm">
+              <div className="bg-white rounded-xl px-4 py-2.5 mb-3 text-xs text-gray-500 flex gap-4 shadow-sm items-center">
                 <span><strong className="text-ocean-700">{users.length}</strong> zarejestrowanych</span>
                 <span><strong className="text-green-600">{users.filter((u) => u.emailVerified).length}</strong> zweryfikowanych</span>
                 <span><strong className="text-gray-400">{guestCount}</strong> gości</span>
+                <button
+                  className="ml-auto flex items-center gap-1.5 bg-ocean-50 hover:bg-ocean-100 text-ocean-700 font-semibold px-3 py-1.5 rounded-lg transition"
+                  onClick={() => {
+                    const rows = ['email,nickname,city,registeredAt,emailVerified,discoveries'];
+                    users.filter((u) => u.email).forEach((u) => {
+                      rows.push([u.email, u.nickname, u.city, u.registeredAt, u.emailVerified, u.discoveryCount]
+                        .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
+                        .join(','));
+                    });
+                    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `karwia-users-${new Date().toISOString().slice(0, 10)}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  <Download size={13} />
+                  Eksportuj CSV
+                </button>
               </div>
 
               <div className="space-y-2">

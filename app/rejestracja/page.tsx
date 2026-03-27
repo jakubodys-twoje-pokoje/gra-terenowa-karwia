@@ -12,6 +12,7 @@ function RegisterForm() {
   const [form, setForm] = useState({ nickname: '', email: '', password: '', confirmPassword: '', city: '' });
   const [showPass, setShowPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -134,11 +135,26 @@ function RegisterForm() {
           className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400"
         />
 
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded accent-ocean-500 shrink-0"
+          />
+          <span className="text-sm text-gray-500 leading-snug">
+            Akceptuję{' '}
+            <Link href="/regulamin" className="text-ocean-500 underline" target="_blank" rel="noopener noreferrer">Regulamin</Link>
+            {' '}i{' '}
+            <Link href="/polityka-prywatnosci" className="text-ocean-500 underline" target="_blank" rel="noopener noreferrer">Politykę prywatności</Link>
+          </span>
+        </label>
+
         {error && <p className="text-red-500 text-sm px-1">{error}</p>}
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !termsAccepted}
           className="w-full flex items-center justify-center gap-2 bg-ocean-500 text-white py-3.5 rounded-2xl font-bold text-sm shadow-lg shadow-ocean-500/30 disabled:opacity-60 mt-2"
         >
           <UserPlus size={16} />
@@ -149,13 +165,6 @@ function RegisterForm() {
       <p className="text-center text-sm text-gray-400 mt-6">
         Masz już konto?{' '}
         <Link href="/login" className="text-ocean-500 font-semibold">Zaloguj się</Link>
-      </p>
-
-      <p className="text-center text-[11px] text-gray-300 mt-6 leading-relaxed">
-        Rejestrując się, akceptujesz{' '}
-        <Link href="/regulamin" className="text-gray-400 underline">Regulamin</Link>
-        {' '}i{' '}
-        <Link href="/polityka-prywatnosci" className="text-gray-400 underline">Politykę prywatności</Link>.
       </p>
     </div>
   );

@@ -70,7 +70,7 @@ export default function BuildingCard({
           {cat.label}
         </span>
         <h3 className="font-bold text-ocean-800 mt-2 leading-snug line-clamp-1">
-          {discovered ? name : <span className="text-gray-400 tracking-widest">???</span>}
+          {name}
         </h3>
         {discovered ? (
           <p className="text-gray-500 text-sm mt-1 line-clamp-2">{description}</p>

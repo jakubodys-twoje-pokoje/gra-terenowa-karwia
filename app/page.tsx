@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { QrCode, MapPin, ChevronDown, ExternalLink, Navigation, Crosshair } from 'lucide-react';
+import { QrCode, MapPin, ChevronDown, ExternalLink, Navigation, Crosshair, HelpCircle, X } from 'lucide-react';
 import type { MapBuilding, MapHandle } from '@/components/MapComponent';
 import { useAuth } from '@/lib/useAuth';
 
@@ -55,6 +55,7 @@ export default function MapPage() {
   const [sheetOpen, setSheetOpen]         = useState(false);
   const [nearestToast, setNearestToast]   = useState('');
   const [nearestLoading, setNearestLoading] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
   const sheetRef       = useRef<HTMLDivElement>(null);
   const mapHandle      = useRef<MapHandle | null>(null);
   const userPosRef     = useRef<[number, number] | null>(null);
@@ -84,6 +85,19 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Show instructions on first visit
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!localStorage.getItem('karwia_instructions_shown')) {
+      setShowInstructions(true);
+    }
+  }, []);
+
+  const closeInstructions = () => {
+    localStorage.setItem('karwia_instructions_shown', '1');
+    setShowInstructions(false);
+  };
 
   const handleBuildingClick = useCallback((id: number) => {
     const b = buildings.find((x) => x.id === id);
@@ -241,6 +255,15 @@ export default function MapPage() {
         >
           <Crosshair size={18} className="text-ocean-500" />
         </button>
+
+        {/* Help / instructions */}
+        <button
+          onClick={() => setShowInstructions(true)}
+          className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center justify-center hover:bg-white active:scale-95 transition-all"
+          title="Jak grać?"
+        >
+          <HelpCircle size={18} className="text-ocean-500" />
+        </button>
       </div>
 
       {/* Nearest toast */}
@@ -326,6 +349,60 @@ export default function MapPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Instructions modal */}
+      {showInstructions && (
+        <div className="absolute inset-0 z-[700] bg-black/60 flex items-end" onClick={closeInstructions}>
+          <div
+            className="w-full bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8"
+            style={{ animation: 'slideUp 0.3s ease-out' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-extrabold text-ocean-900">Jak grać?</h2>
+              <button onClick={closeInstructions} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600">
+                <X size={22} />
+              </button>
+            </div>
+            <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+              <div className="flex gap-3 items-start">
+                <span className="text-2xl shrink-0">🗺️</span>
+                <div>
+                  <p className="font-bold text-ocean-900 mb-0.5">Eksploruj Karwię</p>
+                  <p>Odwiedź oznaczone miejsca na mapie — to budynki, zabytki i ciekawostki w Karwi.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-2xl shrink-0">📱</span>
+                <div>
+                  <p className="font-bold text-ocean-900 mb-0.5">Zeskanuj kod QR</p>
+                  <p>Przy każdym miejscu znajdziesz tabliczkę z kodem QR. Zeskanuj go, by odblokować informacje i zdobyć punkt.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-2xl shrink-0">🏆</span>
+                <div>
+                  <p className="font-bold text-ocean-900 mb-0.5">Zbieraj odznaki</p>
+                  <p>Za odkrywanie kolejnych miejsc i spełnianie specjalnych warunków zdobywasz odznaki odkrywcy.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-2xl shrink-0">📍</span>
+                <div>
+                  <p className="font-bold text-ocean-900 mb-0.5">Nawigacja GPS</p>
+                  <p>Skorzystaj z przycisku <strong>Najbliżej</strong>, żeby znaleźć najbliższe nieodkryte miejsce, lub z celownika, by zobaczyć swoją pozycję na mapie.</p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={closeInstructions}
+              className="mt-6 w-full bg-ocean-500 text-white py-3.5 rounded-2xl font-bold text-sm"
+            >
+              Rozumiem, zaczynam grę! 🚀
+            </button>
           </div>
         </div>
       )}

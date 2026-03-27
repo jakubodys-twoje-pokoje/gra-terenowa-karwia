@@ -45,6 +45,7 @@ interface NearbyBuilding {
   lng: number;
   category: string;
   imageUrl: string | null;
+  outlineImageUrl: string | null;
   distanceKm: number;
 }
 
@@ -62,6 +63,7 @@ export default function BudynekPage() {
   const [building, setBuilding] = useState<Building | null>(null);
   const [nearby, setNearby] = useState<NearbyBuilding[]>([]);
   const [discovered, setDiscovered] = useState(false);
+  const [discoveredIds, setDiscoveredIds] = useState<Set<number>>(new Set());
   const [newAchievements, setNewAchievements] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -102,6 +104,7 @@ export default function BudynekPage() {
     setBuilding(b);
     setNearby(n);
     setDiscovered(isDiscovered);
+    setDiscoveredIds(new Set(discoveries.map((d) => d.building.id)));
     setLoading(false);
 
     // If not discovered, stop here — locked view will be shown
@@ -349,27 +352,33 @@ export default function BudynekPage() {
               Najbliższe miejsca
             </h2>
             <div className="space-y-3">
-              {nearby.map((n) => (
-                <Link key={n.id} href={`/budynek/${n.id}`}>
-                  <div className="bg-white rounded-2xl p-4 shadow-card flex items-center gap-3 hover:shadow-card-hover transition-all">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-ocean-100 shrink-0">
-                      {n.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={n.imageUrl} alt={n.name} className="w-full h-full object-cover grayscale" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center"><Lock size={18} className="text-gray-300" /></div>
-                      )}
+              {nearby.map((n) => {
+                const nearbyDiscovered = discoveredIds.has(n.id);
+                const nearbyImgSrc = nearbyDiscovered
+                  ? n.imageUrl
+                  : (n.outlineImageUrl ?? n.imageUrl);
+                return (
+                  <Link key={n.id} href={`/budynek/${n.id}`}>
+                    <div className="bg-white rounded-2xl p-4 shadow-card flex items-center gap-3 hover:shadow-card-hover transition-all">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-ocean-100 shrink-0">
+                        {nearbyImgSrc ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={nearbyImgSrc} alt={n.name} className={`w-full h-full object-cover ${nearbyDiscovered ? '' : 'grayscale'}`} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center"><Lock size={18} className="text-gray-300" /></div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-ocean-900 text-sm truncate">{n.name}</p>
+                        <p className="text-gray-400 text-xs mt-0.5">
+                          {n.distanceKm < 1 ? `${Math.round(n.distanceKm * 1000)} m` : `${n.distanceKm.toFixed(1)} km`} stąd
+                        </p>
+                      </div>
+                      <span className="text-ocean-300">›</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-ocean-900 text-sm truncate">???</p>
-                      <p className="text-gray-400 text-xs mt-0.5">
-                        {n.distanceKm < 1 ? `${Math.round(n.distanceKm * 1000)} m` : `${n.distanceKm.toFixed(1)} km`} stąd
-                      </p>
-                    </div>
-                    <span className="text-ocean-300">›</span>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}

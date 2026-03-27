@@ -20,6 +20,33 @@ function getUserId(): string {
   return id;
 }
 
+// ── FAQ ───────────────────────────────────────────────────────────────────────
+const FAQ_ITEMS = [
+  { q: 'Jak zeskanować kod QR?', a: 'Otwórz zakładkę „Skanuj" w dolnym menu i skieruj aparat telefonu na tabliczkę z kodem QR przy danym miejscu. Aplikacja automatycznie rozpozna kod i otworzy stronę budynku.' },
+  { q: 'Jaką przeglądarkę wybrać?', a: 'Zalecamy Google Chrome — zapewnia najlepszą obsługę skanowania QR, GPS i funkcji aplikacji. Na iPhone\'ie najlepiej sprawdza się Safari. Inne przeglądarki mogą nie obsługiwać skanera.' },
+  { q: 'Czy aplikacja działa bez internetu?', a: 'Mapa i skanowanie wymagają aktywnego połączenia z internetem (WiFi lub mobilny internet). Zalecamy sprawdzić zasięg przed wyjściem na eksplorację.' },
+  { q: 'Nie mogę znaleźć miejsca na mapie — co zrobić?', a: 'Użyj przycisku „Najbliżej" na mapie — GPS wyznaczy najbliższe nieodkryte miejsce. Upewnij się, że aplikacja ma uprawnienie do lokalizacji. Możesz też przeglądać pełną Bazę Budynków w menu.' },
+];
+
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3.5 text-left gap-3"
+      >
+        <span className="font-semibold text-ocean-900 text-sm leading-snug">{q}</span>
+        <span className={`text-ocean-400 text-lg leading-none transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+      {open && (
+        <p className="px-4 pb-4 text-sm text-gray-500 leading-relaxed">{a}</p>
+      )}
+    </div>
+  );
+}
+
 // ── GUEST VIEW ────────────────────────────────────────────────────────────────
 function GuestView({ onRegister }: { onRegister: () => void }) {
   const [showPopup, setShowPopup] = useState(false);
@@ -552,6 +579,14 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
           </div>
         </div>
       )}
+
+      {/* FAQ */}
+      <div className="px-4 mt-6 mb-2">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-ocean-500 mb-3">Najczęstsze pytania</h2>
+        <div className="space-y-2">
+          {FAQ_ITEMS.map((item) => <FaqItem key={item.q} q={item.q} a={item.a} />)}
+        </div>
+      </div>
 
       <PartnerLogos logoHeight="h-8" />
 
