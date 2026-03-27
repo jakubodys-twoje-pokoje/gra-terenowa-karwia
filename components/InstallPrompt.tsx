@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Share, Plus, Download, Smartphone } from 'lucide-react';
+import { Share, Plus, Download, Smartphone, X } from 'lucide-react';
 
 type Platform = 'android' | 'ios' | null;
 
@@ -121,9 +121,12 @@ export default function InstallPrompt() {
             : 'translate-y-full md:translate-y-0 md:scale-95 opacity-0',
         ].join(' ')}
       >
-        {/* Handle */}
-        <div className="md:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        {/* Handle + close */}
+        <div className="flex items-center justify-between pt-3 px-3 pb-1">
+          <div className="md:hidden w-10 h-1 rounded-full bg-gray-200 mx-auto" />
+          <button onClick={dismiss} className="ml-auto p-1.5 rounded-full text-gray-400 hover:text-gray-600">
+            <X size={18} />
+          </button>
         </div>
 
         {/* Hero */}
