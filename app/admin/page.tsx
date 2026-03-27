@@ -23,17 +23,21 @@ interface UserEntry {
 }
 
 interface CategoryEntry { id: number; value: string; label: string; icon: string; order: number; }
-interface AchievementEntry { id: number; name: string; description: string; icon: string; color: string; conditionType: string; conditionValue: number; conditionCategory: string | null; order: number; }
+interface AchievementEntry { id: number; name: string; description: string; icon: string; color: string; conditionType: string; conditionValue: number; conditionCategory: string | null; buildingIds: string | null; order: number; }
 interface EasterEggEntry { id: number; name: string; title: string; description: string | null; mediaType: string; mediaUrl: string | null; triggerType: string; triggerValue: number | null; triggerBuildingId: number | null; active: boolean; }
 
 const CONDITION_TYPES = [
-  { value: 'total_count',    label: 'Liczba odkryć (≥ N)' },
-  { value: 'total_all',      label: 'Odkryj wszystkie' },
-  { value: 'category_count', label: 'Odkrycia kategorii (≥ N)' },
+  { value: 'total_count',        label: 'Liczba odkryć (≥ N)' },
+  { value: 'total_all',          label: 'Odkryj wszystkie' },
+  { value: 'category_count',     label: 'Odkrycia kategorii (≥ N)' },
+  { value: 'building_set',       label: 'Konkretne budynki (N z listy)' },
+  { value: 'days_active',        label: 'Aktywność przez N dni' },
+  { value: 'all_in_one_day',     label: 'Wszystkie budynki w 1 dzień' },
+  { value: 'return_after_break', label: 'Powrót po przerwie (7+ dni)' },
 ];
 
 const EMPTY_CAT_FORM = { value: '', label: '', icon: '', order: 0 };
-const EMPTY_ACH_FORM = { name: '', description: '', icon: '🏆', color: '#0F5F92', conditionType: 'total_count', conditionValue: 1, conditionCategory: '', order: 0 };
+const EMPTY_ACH_FORM = { name: '', description: '', icon: '🏆', color: '#0F5F92', conditionType: 'total_count', conditionValue: 1, conditionCategory: '', buildingIds: '', order: 0 };
 const EMPTY_EGG_FORM = { name: '', title: '', description: '', mediaType: 'none', mediaUrl: '', triggerType: 'discovery_count', triggerValue: 1, triggerBuildingId: '', active: true };
 const TRIGGER_TYPES = [
   { value: 'discovery_count', label: 'Po dokładnie N odkryciach' },
@@ -342,7 +346,12 @@ export default function AdminPage() {
 
   const handleAchSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setFormError('');
-    const body = { ...achForm, conditionValue: Number(achForm.conditionValue), conditionCategory: achForm.conditionCategory || null };
+    const body = {
+      ...achForm,
+      conditionValue: Number(achForm.conditionValue),
+      conditionCategory: achForm.conditionCategory || null,
+      buildingIds: achForm.buildingIds?.trim() || null,
+    };
     const url    = editingAchId ? `/api/admin/achievements/${editingAchId}` : '/api/admin/achievements';
     const method = editingAchId ? 'PUT' : 'POST';
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
@@ -351,7 +360,7 @@ export default function AdminPage() {
   };
 
   const handleAchEdit = (a: AchievementEntry) => {
-    setAchForm({ name: a.name, description: a.description, icon: a.icon, color: a.color, conditionType: a.conditionType, conditionValue: a.conditionValue, conditionCategory: a.conditionCategory ?? '', order: a.order });
+    setAchForm({ name: a.name, description: a.description, icon: a.icon, color: a.color, conditionType: a.conditionType, conditionValue: a.conditionValue, conditionCategory: a.conditionCategory ?? '', buildingIds: a.buildingIds ?? '', order: a.order });
     setEditingAchId(a.id); setShowAchForm(true);
   };
 
@@ -910,6 +919,14 @@ export default function AdminPage() {
                       </div>
                     )}
 
+                    {achForm.conditionType === 'building_set' && (
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">IDs budynków (JSON, np. [1,2,3])</label>
+                        <textarea rows={2} placeholder='[43, 44, 45]' value={achForm.buildingIds} onChange={(e) => setAchForm((f) => ({ ...f, buildingIds: e.target.value }))} className="input font-mono text-xs resize-none" />
+                        <p className="text-xs text-gray-400 mt-1">Wymagana liczba N powyżej — użytkownik musi odkryć N budynków z tej listy</p>
+                      </div>
+                    )}
+
                     <div>
                       <label className="text-xs text-gray-500 mb-1 block">Kolejność na liście</label>
                       <input type="number" value={achForm.order} onChange={(e) => setAchForm((f) => ({ ...f, order: Number(e.target.value) }))} className="input" />
@@ -948,9 +965,13 @@ export default function AdminPage() {
                       <p className="font-bold text-sm" style={{ color: a.color }}>{a.name}</p>
                       <p className="text-gray-400 text-xs truncate">{a.description}</p>
                       <p className="text-gray-300 text-xs mt-0.5">
-                        {a.conditionType === 'total_count' && `Odkryj ≥ ${a.conditionValue} miejsc`}
-                        {a.conditionType === 'total_all'   && 'Odkryj wszystkie miejsca'}
-                        {a.conditionType === 'category_count' && `Kat. "${a.conditionCategory}" ≥ ${a.conditionValue}`}
+                        {a.conditionType === 'total_count'        && `Odkryj ≥ ${a.conditionValue} miejsc`}
+                        {a.conditionType === 'total_all'          && 'Odkryj wszystkie miejsca'}
+                        {a.conditionType === 'category_count'     && `Kat. "${a.conditionCategory}" ≥ ${a.conditionValue}`}
+                        {a.conditionType === 'building_set'       && `${a.conditionValue} z ${JSON.parse(a.buildingIds ?? '[]').length} budynków`}
+                        {a.conditionType === 'days_active'        && `Aktywność przez ${a.conditionValue} dni`}
+                        {a.conditionType === 'all_in_one_day'     && 'Wszystkie w 1 dzień'}
+                        {a.conditionType === 'return_after_break' && 'Powrót po 7+ dniach przerwy'}
                       </p>
                     </div>
                     <div className="flex gap-1 shrink-0">

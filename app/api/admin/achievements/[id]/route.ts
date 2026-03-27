@@ -11,7 +11,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id: idStr } = await params;
   const id = parseInt(idStr);
-  const { name, description, icon, color, conditionType, conditionValue, conditionCategory, order } = await req.json();
+  const { name, description, icon, color, conditionType, conditionValue, conditionCategory, buildingIds, order } = await req.json();
 
   const achievement = await prisma.achievement.update({
     where: { id },
@@ -23,6 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       conditionType,
       conditionValue: conditionValue ?? 1,
       conditionCategory: conditionCategory || null,
+      buildingIds: buildingIds || null,
       order: order ?? 0,
     },
   });

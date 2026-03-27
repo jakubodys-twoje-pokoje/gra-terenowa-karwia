@@ -80,9 +80,10 @@ model Achievement {
   description       String
   icon              String  @default("🏆")
   color             String  @default("#0F5F92")
-  conditionType     String  // total_count | total_all | category_count
+  conditionType     String  // total_count | total_all | category_count | building_set | days_active | all_in_one_day | return_after_break
   conditionValue    Int     @default(1)
   conditionCategory String?
+  buildingIds       String? // JSON array of building IDs, used for building_set type
   order             Int     @default(0)
 }
 

@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!isAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { name, description, icon, color, conditionType, conditionValue, conditionCategory, order } = await req.json();
+  const { name, description, icon, color, conditionType, conditionValue, conditionCategory, buildingIds, order } = await req.json();
   if (!name || !conditionType) return NextResponse.json({ error: 'name i conditionType są wymagane' }, { status: 400 });
 
   const achievement = await prisma.achievement.create({
@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
       conditionType,
       conditionValue: conditionValue ?? 1,
       conditionCategory: conditionCategory || null,
+      buildingIds: buildingIds || null,
       order: order ?? 0,
     },
   });

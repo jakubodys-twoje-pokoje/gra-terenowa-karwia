@@ -1,23 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
+interface Discovery {
+  buildingId: number;
+  discoveredAt: Date;
+  building: { category: string };
+}
+
 function isUnlocked(
-  conditionType: string,
-  conditionValue: number,
-  conditionCategory: string | null,
+  a: { conditionType: string; conditionValue: number; conditionCategory: string | null; buildingIds: string | null },
   discoveredCount: number,
   totalBuildings: number,
-  discoveredCategories: string[],
+  discoveries: Discovery[],
 ): boolean {
-  switch (conditionType) {
+  const discoveredBuildingIds = new Set(discoveries.map((d) => d.buildingId));
+
+  switch (a.conditionType) {
     case 'total_count':
-      return discoveredCount >= conditionValue;
+      return discoveredCount >= a.conditionValue;
+
     case 'total_all':
       return totalBuildings > 0 && discoveredCount >= totalBuildings;
+
     case 'category_count': {
-      const count = discoveredCategories.filter((c) => c === conditionCategory).length;
-      return count >= conditionValue;
+      const count = discoveries.filter((d) => d.building.category === a.conditionCategory).length;
+      return count >= a.conditionValue;
     }
+
+    case 'building_set': {
+      const ids: number[] = JSON.parse(a.buildingIds ?? '[]');
+      const found = ids.filter((id) => discoveredBuildingIds.has(id)).length;
+      return found >= a.conditionValue;
+    }
+
+    case 'days_active': {
+      const days = new Set(discoveries.map((d) => d.discoveredAt.toISOString().slice(0, 10)));
+      return days.size >= a.conditionValue;
+    }
+
+    case 'all_in_one_day': {
+      // All discoveries (at least 1) happened on the same calendar day
+      if (discoveries.length === 0) return false;
+      const days = new Set(discoveries.map((d) => d.discoveredAt.toISOString().slice(0, 10)));
+      return days.size === 1 && totalBuildings > 0 && discoveredCount >= totalBuildings;
+    }
+
+    case 'return_after_break': {
+      // At least 2 discoveries with a gap of >= 7 days between any two
+      if (discoveries.length < 2) return false;
+      const sorted = [...discoveries].sort((a, b) => +a.discoveredAt - +b.discoveredAt);
+      for (let i = 1; i < sorted.length; i++) {
+        const diffDays = (+sorted[i].discoveredAt - +sorted[i - 1].discoveredAt) / 86400000;
+        if (diffDays >= 7) return true;
+      }
+      return false;
+    }
+
     default:
       return false;
   }
@@ -31,21 +69,15 @@ export async function GET(req: NextRequest) {
     prisma.building.count({ where: { published: true } }),
   ]);
 
-  if (allAchievements.length === 0) {
-    // Return empty if not seeded yet
-    return NextResponse.json([]);
-  }
+  if (allAchievements.length === 0) return NextResponse.json([]);
 
-  let discoveredCount = 0;
-  let discoveredCategories: string[] = [];
+  let discoveries: Discovery[] = [];
 
   if (userId) {
-    const discoveries = await prisma.userDiscovery.findMany({
+    discoveries = await prisma.userDiscovery.findMany({
       where: { userId },
       include: { building: { select: { category: true } } },
     });
-    discoveredCount = discoveries.length;
-    discoveredCategories = discoveries.map((d) => d.building.category);
   }
 
   const result = allAchievements.map((a) => ({
@@ -57,15 +89,9 @@ export async function GET(req: NextRequest) {
     conditionType: a.conditionType,
     conditionValue: a.conditionValue,
     conditionCategory: a.conditionCategory,
+    buildingIds: a.buildingIds,
     order: a.order,
-    unlocked: isUnlocked(
-      a.conditionType,
-      a.conditionValue,
-      a.conditionCategory,
-      discoveredCount,
-      totalBuildings,
-      discoveredCategories,
-    ),
+    unlocked: isUnlocked(a, discoveries.length, totalBuildings, discoveries),
   }));
 
   return NextResponse.json(result);
