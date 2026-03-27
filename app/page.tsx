@@ -458,7 +458,7 @@ export default function MapPage() {
                       {CATEGORY_LABELS[selected.category] ?? selected.category}
                     </span>
                     <h2 className="text-base font-extrabold text-ocean-900 mt-1 leading-tight">
-                      {isDiscovered ? selected.name : '???'}
+                      {selected.name}
                     </h2>
                     {selected.address && isDiscovered && (
                       <p className="text-gray-400 text-xs mt-0.5 truncate">{selected.address}</p>
