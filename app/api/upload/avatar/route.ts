@@ -33,10 +33,10 @@ export async function POST(req: NextRequest) {
   await mkdir(uploadsDir, { recursive: true });
   await writeFile(path.join(uploadsDir, filename), processed);
 
-  // Return the processed image as base64 data URL so the client can display
-  // it immediately without a second HTTP request (avoids PM2 cluster race
-  // condition where a different instance handles the subsequent GET).
+  // Return processed image as base64 data URL for immediate client display
+  // (no 2nd HTTP request, no race condition), plus the API URL for DB storage.
+  // Using /api/avatars/ route (not /uploads/) so Nginx always proxies to Next.js.
   const dataUrl = `data:image/webp;base64,${processed.toString('base64')}`;
 
-  return NextResponse.json({ url: `/uploads/avatars/${filename}`, dataUrl });
+  return NextResponse.json({ url: `/api/avatars/${filename}`, dataUrl });
 }
