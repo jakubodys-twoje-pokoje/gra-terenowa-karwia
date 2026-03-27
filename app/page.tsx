@@ -86,13 +86,16 @@ export default function MapPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Show instructions on first visit
+  // Show instructions on first visit — but only if welcome modal won't also appear
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!localStorage.getItem('karwia_instructions_shown')) {
-      setShowInstructions(true);
-    }
-  }, []);
+    if (localStorage.getItem('karwia_instructions_shown')) return;
+    // WelcomeModal shows for non-logged-in users who haven't dismissed it this session.
+    // Avoid stacking two popups — let WelcomeModal go first; user can use ? button for instructions.
+    const welcomeDismissed = sessionStorage.getItem('karwia_welcomed');
+    if (!welcomeDismissed && !user) return;
+    setShowInstructions(true);
+  }, [user]);
 
   const closeInstructions = () => {
     localStorage.setItem('karwia_instructions_shown', '1');

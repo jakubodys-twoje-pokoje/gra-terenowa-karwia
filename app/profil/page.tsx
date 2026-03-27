@@ -99,6 +99,14 @@ function GuestView({ onRegister }: { onRegister: () => void }) {
         Zarejestruj się, by zapisać dane
       </button>
 
+      {/* FAQ */}
+      <div className="mt-6 mb-2">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-ocean-500 mb-3">Najczęstsze pytania</h2>
+        <div className="space-y-2">
+          {FAQ_ITEMS.map((item) => <FaqItem key={item.q} q={item.q} a={item.a} />)}
+        </div>
+      </div>
+
       <PartnerLogos logoHeight="h-8" />
 
       {/* Popup */}

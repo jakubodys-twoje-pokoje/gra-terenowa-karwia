@@ -92,25 +92,22 @@ export default function WelcomeModal() {
         </div>
 
         {/* Hero */}
-        <div className="bg-gradient-to-br from-ocean-500 to-ocean-700 mx-4 mt-2 md:mt-4 rounded-2xl px-6 py-5 text-white text-center">
+        <div className="bg-gradient-to-br from-ocean-500 to-ocean-700 mx-4 mt-2 rounded-2xl px-5 py-3 text-white flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/karwia-logo.webp" alt="Karwia" className="w-20 h-auto mx-auto mb-1 drop-shadow-md" />
-          <h2 className="text-xl font-extrabold leading-tight">Witaj w Karwi!</h2>
-          <p className="text-ocean-200 text-sm mt-1">Gra terenowa nad morzem</p>
+          <img src="/icons/karwia-logo.webp" alt="Karwia" className="w-12 h-auto shrink-0 drop-shadow-md" />
+          <div>
+            <h2 className="text-base font-extrabold leading-tight">Witaj w Karwi!</h2>
+            <p className="text-ocean-200 text-xs mt-0.5">Odkrywaj miejsca, zdobywaj odznaki</p>
+          </div>
         </div>
 
         {/* Body */}
-        <div className="px-6 pt-4 pb-2">
-          <p className="text-gray-500 text-sm text-center leading-relaxed">
-            Odkrywaj miejsca, skanuj kody QR i zbieraj odznaki.<br />
-            Zarejestruj się, żeby nic nie stracić:
-          </p>
-
-          <ul className="mt-4 space-y-2.5">
+        <div className="px-5 pt-3 pb-1">
+          <ul className="space-y-2">
             {BENEFITS.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-center gap-3 text-sm text-gray-600">
-                <span className="w-8 h-8 rounded-xl bg-ocean-50 flex items-center justify-center shrink-0">
-                  <Icon size={16} className="text-ocean-500" />
+              <li key={text} className="flex items-center gap-2.5 text-sm text-gray-600">
+                <span className="w-7 h-7 rounded-xl bg-ocean-50 flex items-center justify-center shrink-0">
+                  <Icon size={14} className="text-ocean-500" />
                 </span>
                 {text}
               </li>
@@ -119,10 +116,10 @@ export default function WelcomeModal() {
         </div>
 
         {/* Actions */}
-        <div className="px-6 pt-4 pb-4 space-y-2.5">
+        <div className="px-5 pt-3 pb-5 space-y-2">
           <button
             onClick={goRegister}
-            className="w-full bg-ocean-500 hover:bg-ocean-600 text-white py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"
+            className="w-full bg-ocean-500 hover:bg-ocean-600 text-white py-3 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"
           >
             <UserPlus size={16} />
             Zarejestruj się
@@ -130,7 +127,7 @@ export default function WelcomeModal() {
 
           <button
             onClick={() => go('/login')}
-            className="w-full bg-ocean-50 hover:bg-ocean-100 text-ocean-700 py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"
+            className="w-full bg-ocean-50 hover:bg-ocean-100 text-ocean-700 py-3 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"
           >
             <LogIn size={16} />
             Zaloguj się
@@ -138,14 +135,12 @@ export default function WelcomeModal() {
 
           <button
             onClick={dismiss}
-            className="w-full py-3 text-gray-400 text-sm font-semibold hover:text-gray-600 transition flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 text-gray-400 text-sm font-semibold hover:text-gray-600 transition flex items-center justify-center gap-1.5"
           >
             Kontynuuj jako gość
             <ArrowRight size={14} />
           </button>
         </div>
-
-        <PartnerLogos logoHeight="h-7" />
       </div>
     </>
   );
