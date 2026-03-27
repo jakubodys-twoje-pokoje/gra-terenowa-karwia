@@ -271,7 +271,7 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
       setUploadProgress(null);
     };
     xhr.onerror = () => {
-      URL.revokeObjectURL(preview);
+      setTimeout(() => URL.revokeObjectURL(preview), 500);
       setAvatarUrl(user.avatarUrl ?? null);
       setUploadProgress(null);
       setUploadError('Błąd sieci — sprawdź połączenie');
@@ -364,9 +364,14 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
               alt="Avatar"
               className="w-24 h-24 rounded-full object-cover border-4 border-ocean-200 shadow-lg"
               onError={() => {
-                if (avatarUrl.startsWith('blob:')) URL.revokeObjectURL(avatarUrl);
-                setAvatarUrl(null);
-                setUploadError('Nie udało się załadować zdjęcia — sprawdź połączenie i spróbuj ponownie.');
+                if (avatarUrl?.startsWith('blob:')) {
+                  // Blob revoked before React re-rendered — silently fall back, upload error already set
+                  setAvatarUrl(null);
+                } else {
+                  // Saved URL broken (e.g. file deleted from server)
+                  setAvatarUrl(null);
+                  setUploadError('Nie udało się załadować zdjęcia — spróbuj wgrać nowe.');
+                }
               }}
             />
           ) : (
