@@ -6,6 +6,8 @@ import PortraitGuard from '@/components/PortraitGuard';
 import ClientWrapper from '@/components/ClientWrapper';
 import WelcomeModal from '@/components/WelcomeModal';
 import PageTransition from '@/components/PageTransition';
+import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
+import InstallPrompt from '@/components/InstallPrompt';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://karwia.app'),
@@ -51,6 +53,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Navigation />
         <PortraitGuard />
         <Suspense><WelcomeModal /></Suspense>
+        <InstallPrompt />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
