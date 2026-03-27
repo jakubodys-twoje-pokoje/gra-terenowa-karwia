@@ -15,13 +15,11 @@ const dbUrl = raw.startsWith('file:') ? raw.slice(5) : raw;
 const adapter = new PrismaBetterSqlite3({ url: dbUrl });
 const prisma  = new PrismaClient({ adapter });
 
-// ── Customise these ──────────────────────────────────────────────────────────
-const OPERATOR_NAME    = 'Twoje Pokoje sp. z o.o.';
-const OPERATOR_ADDRESS = 'ul. Przykładowa 1, 84-210 Karwia';
-const OPERATOR_EMAIL   = 'kontakt@twojepokoje.com.pl';
+const OPERATOR_NAME    = 'Sołectwo Karwia';
+const OPERATOR_ADDRESS = 'ul. Wojska Polskiego, 84-105 Karwia';
+const OPERATOR_EMAIL   = 'kontakt@karwia.pl';
 const APP_URL          = 'https://odkrywca.karwia.pl';
 const APP_NAME         = 'Odkrywca Karwi';
-// ─────────────────────────────────────────────────────────────────────────────
 
 const REGULAMIN = /* html */`
 <h2>§ 1. Postanowienia ogólne</h2>
