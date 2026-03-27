@@ -225,9 +225,12 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
             setUploadError(apiErr ?? 'Błąd serwera przy uploading');
             setAvatarUrl(user.avatarUrl ?? null);
           } else {
-            // Set real URL, then revoke the preview blob after React has re-rendered
-            setAvatarUrl(`${url}?t=${Date.now()}`);
-            setTimeout(() => URL.revokeObjectURL(preview), 2000);
+            // Preload the real image before swapping src so there's no broken-image flash
+            const realUrl = `${url}?t=${Date.now()}`;
+            const preloader = new window.Image();
+            preloader.onload = () => { setAvatarUrl(realUrl); URL.revokeObjectURL(preview); };
+            preloader.onerror = () => { setAvatarUrl(realUrl); setTimeout(() => URL.revokeObjectURL(preview), 500); };
+            preloader.src = realUrl;
             const saveRes = await fetch('/api/profil', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
