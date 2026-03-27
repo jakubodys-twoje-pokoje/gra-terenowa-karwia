@@ -51,6 +51,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 function GuestView({ onRegister }: { onRegister: () => void }) {
   const [showPopup, setShowPopup] = useState(false);
   const [guestId, setGuestId] = useState('');
+  const router = useRouter();
 
   useEffect(() => { setGuestId(getUserId()); }, []);
 
@@ -97,6 +98,11 @@ function GuestView({ onRegister }: { onRegister: () => void }) {
       <button onClick={onRegister}
         className="w-full mt-4 bg-ocean-500 text-white py-3.5 rounded-2xl font-bold text-sm shadow-lg shadow-ocean-500/30 flex items-center justify-center gap-2">
         Zarejestruj się, by zapisać dane
+      </button>
+
+      <button onClick={() => router.push('/login')}
+        className="w-full mt-2 bg-ocean-50 text-ocean-700 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2">
+        Zaloguj się
       </button>
 
       {/* FAQ */}

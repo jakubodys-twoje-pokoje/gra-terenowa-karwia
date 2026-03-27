@@ -75,7 +75,7 @@ const REGULAMIN = /* html */`
 <h2>§ 9. Postanowienia końcowe</h2>
 <p>Regulamin podlega prawu polskiemu. W sprawach nieuregulowanych stosuje się przepisy Kodeksu cywilnego oraz ustawy o świadczeniu usług drogą elektroniczną. Wszelkie spory będą rozstrzygane przez właściwy sąd powszechny.</p>
 <p>Kontakt z Operatorem: <a href="mailto:${OPERATOR_EMAIL}">${OPERATOR_EMAIL}</a></p>
-<p><em>Regulamin obowiązuje od dnia 1 czerwca 2025 r.</em></p>
+<p><em>Regulamin obowiązuje od dnia 1 kwietnia 2025 r.</em></p>
 `;
 
 const POLITYKA = /* html */`
@@ -147,7 +147,7 @@ const POLITYKA = /* html */`
 
 <h2>10. Kontakt</h2>
 <p>W sprawach związanych z ochroną danych osobowych prosimy o kontakt: <a href="mailto:${OPERATOR_EMAIL}">${OPERATOR_EMAIL}</a></p>
-<p><em>Polityka prywatności obowiązuje od dnia 1 czerwca 2025 r.</em></p>
+<p><em>Polityka prywatności obowiązuje od dnia 1 kwietnia 2025 r.</em></p>
 `;
 
 async function main() {
