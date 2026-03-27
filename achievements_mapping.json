@@ -1,0 +1,807 @@
+{
+  "achievement_definitions": {
+    "dobry_poczatek": {
+      "name": "Dobry początek",
+      "icon": "🎯",
+      "description": "Ukończono grę w 1 dniu",
+      "type": "time_based",
+      "condition": "all_buildings_in_1_day"
+    },
+    "weekendowy_odkrywca": {
+      "name": "Weekendowy odkrywca",
+      "icon": "📅",
+      "description": "Odwiedzono punkty w 2 różne dni",
+      "type": "time_based",
+      "condition": "activity_2_different_days"
+    },
+    "wytrwaly_spacerowicz": {
+      "name": "Wytrwały spacerowicz",
+      "icon": "🚶",
+      "description": "Aktywność przez 3 dni",
+      "type": "time_based",
+      "condition": "activity_3_days"
+    },
+    "systematyczny_eksplorator": {
+      "name": "Systematyczny eksplorator",
+      "icon": "🗺️",
+      "description": "Aktywność przez 7 dni",
+      "type": "time_based",
+      "condition": "activity_7_days"
+    },
+    "powrot_do_karwi": {
+      "name": "Powrót do Karwi",
+      "icon": "🔄",
+      "description": "Wrócono do gry po przerwie",
+      "type": "time_based",
+      "condition": "return_after_break"
+    },
+    "kamien_wegielny": {
+      "name": "Kamień węgielny",
+      "icon": "🧱",
+      "description": "Zeskanuj pierwszy murowany dom w Karwi (dom i karczma Wilhelma Senklera z 1880)",
+      "type": "building_based",
+      "required_count": 1,
+      "required_all": true,
+      "building_ids": [
+        43
+      ]
+    },
+    "ocaleni_z_pozaru": {
+      "name": "Ocaleni z pożaru",
+      "icon": "🔥",
+      "description": "Zeskanuj 3 budynki, które spłonęły lub zostały odbudowane po pożarze",
+      "type": "building_based",
+      "required_count": 3,
+      "required_all": false,
+      "building_ids": [
+        15,
+        25,
+        49,
+        66,
+        69,
+        11
+      ]
+    },
+    "lesniczy": {
+      "name": "Leśniczy",
+      "icon": "🌲",
+      "description": "Zeskanuj wszystkie zabudowania dawnej leśniczówki (Fersztereji)",
+      "type": "building_based",
+      "required_count": null,
+      "required_all": true,
+      "building_ids": [
+        41
+      ]
+    },
+    "archeolog": {
+      "name": "Archeolog",
+      "icon": "⏳",
+      "description": "Zeskanuj 3 budynki sprzed 1800 roku",
+      "type": "building_based",
+      "required_count": 3,
+      "required_all": false,
+      "building_ids": [
+        45,
+        31,
+        57,
+        54,
+        40,
+        52,
+        49,
+        55,
+        46
+      ]
+    },
+    "miedzywojnie": {
+      "name": "Międzywojnie",
+      "icon": "🏗️",
+      "description": "Zeskanuj 10 budynków z dwudziestolecia międzywojennego (1918-1939)",
+      "type": "building_based",
+      "required_count": 10,
+      "required_all": false,
+      "building_ids": [
+        20,
+        39,
+        22,
+        32,
+        27,
+        12,
+        23,
+        65,
+        53,
+        29,
+        30,
+        28,
+        36,
+        17,
+        56,
+        16,
+        58,
+        14,
+        24,
+        33,
+        18,
+        35,
+        21,
+        19,
+        70,
+        64,
+        62,
+        38,
+        61,
+        66,
+        42
+      ]
+    },
+    "duchy_przeszlosci": {
+      "name": "Duchy przeszłości",
+      "icon": "👻",
+      "description": "Zeskanuj 10 budynków, które już nie istnieją",
+      "type": "building_based",
+      "required_count": 10,
+      "required_all": false,
+      "building_ids": [
+        2,
+        13,
+        26,
+        27,
+        40,
+        45,
+        47,
+        49,
+        50,
+        55,
+        57,
+        59,
+        60,
+        61,
+        63,
+        64,
+        68,
+        11,
+        12,
+        21,
+        38,
+        46,
+        31
+      ]
+    },
+    "dynastia_bizewskich": {
+      "name": "Dynastia Bizewskich",
+      "icon": "📜",
+      "description": "Zeskanuj wszystkie budynki związane z rodziną Bizewskich",
+      "type": "building_based",
+      "required_count": null,
+      "required_all": true,
+      "building_ids": [
+        11,
+        12,
+        21,
+        38,
+        46,
+        49,
+        50,
+        51,
+        53
+      ]
+    },
+    "gburowie_z_karwi": {
+      "name": "Gbùrowie z Karwi",
+      "icon": "🐂",
+      "description": "Zeskanuj wszystkie budynki rodziny Voelknerow zwanych Gburami",
+      "type": "building_based",
+      "required_count": null,
+      "required_all": true,
+      "building_ids": [
+        32,
+        25,
+        58,
+        62,
+        63
+      ]
+    },
+    "slad_rettigow": {
+      "name": "Ślad Rettigów",
+      "icon": "⚓",
+      "description": "Zeskanuj wszystkie budynki związane z rodziną Rettigów",
+      "type": "building_based",
+      "required_count": null,
+      "required_all": true,
+      "building_ids": [
+        21,
+        45,
+        47,
+        48,
+        49
+      ]
+    },
+    "letnik": {
+      "name": "Letnik",
+      "icon": "🏨",
+      "description": "Zeskanuj 3 pensjonaty",
+      "type": "building_based",
+      "required_count": 3,
+      "required_all": false,
+      "building_ids": [
+        12,
+        14,
+        18,
+        19,
+        24,
+        27,
+        32,
+        33,
+        48
+      ]
+    },
+    "tropiciel_czeczy": {
+      "name": "Tropiciel chëczy",
+      "icon": "🛖",
+      "description": "Zeskanuj 5 starych chat kaszubskich (checzy)",
+      "type": "building_based",
+      "required_count": 5,
+      "required_all": false,
+      "building_ids": [
+        2,
+        11,
+        13,
+        25,
+        31,
+        40,
+        45,
+        52,
+        54,
+        57,
+        59,
+        63,
+        64,
+        66,
+        21,
+        12,
+        58,
+        60,
+        49
+      ]
+    },
+    "gbur": {
+      "name": "Gbùr",
+      "icon": "🏠",
+      "description": "Zeskanuj 3 zagrody jednobudynkowe wzorowane na zabudowaniach z Karwienskich Blot",
+      "type": "building_based",
+      "required_count": 3,
+      "required_all": false,
+      "building_ids": [
+        46,
+        49,
+        51,
+        55,
+        68,
+        69
+      ]
+    },
+    "bywalec": {
+      "name": "Bywałec",
+      "icon": "🍺",
+      "description": "Zeskanuj wszystkie dawne karczmy i gospody",
+      "type": "building_based",
+      "required_count": null,
+      "required_all": true,
+      "building_ids": [
+        43,
+        46,
+        47,
+        52
+      ]
+    },
+    "pilny_uczen": {
+      "name": "Pilny uczeń",
+      "icon": "🏫",
+      "description": "Zeskanuj starą szkołę z 1892 roku",
+      "type": "building_based",
+      "required_count": 1,
+      "required_all": true,
+      "building_ids": [
+        44
+      ]
+    },
+    "pielgrzym": {
+      "name": "Pielgrzym",
+      "icon": "⛪",
+      "description": "Zeskanuj kościół pw. św. Antoniego Padewskiego i kapliczki",
+      "type": "building_based",
+      "required_count": null,
+      "required_all": true,
+      "building_ids": [
+        67,
+        62,
+        51
+      ]
+    },
+    "rybak": {
+      "name": "Rybak",
+      "icon": "🐟",
+      "description": "Odkrycie chaty rybackiej / budynku związanego z morzem",
+      "type": "building_based",
+      "required_count": 1,
+      "required_all": false,
+      "building_ids": [
+        42,
+        31
+      ]
+    }
+  },
+  "building_to_achievements": {
+    "2": {
+      "name": "Chëcz zwana Szotlandem",
+      "achievements": [
+        "tropiciel_czeczy",
+        "duchy_przeszlosci"
+      ]
+    },
+    "11": {
+      "name": "Budynki nalezace do rodziny Boehm",
+      "achievements": [
+        "tropiciel_czeczy",
+        "dynastia_bizewskich",
+        "duchy_przeszlosci",
+        "ocaleni_z_pozaru"
+      ],
+      "notes": "Wschodnia czesc starej checzy Jana Bizewskiego (~1855) - splonela w czasie okupacji"
+    },
+    "12": {
+      "name": "Budynki nalezace do Antonka Dambecczego",
+      "achievements": [
+        "miedzywojnie",
+        "letnik",
+        "tropiciel_czeczy",
+        "dynastia_bizewskich",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Pensjonat Morskie Oko (~1930); wczesniej stara checz Jana Bizewskiego (~1855)"
+    },
+    "13": {
+      "name": "Checz Nordehama i Cenowe",
+      "achievements": [
+        "tropiciel_czeczy",
+        "duchy_przeszlosci"
+      ]
+    },
+    "14": {
+      "name": "Pensjonat rodziny Nordehama",
+      "achievements": [
+        "miedzywojnie",
+        "letnik"
+      ]
+    },
+    "15": {
+      "name": "Dom Ksawerka",
+      "achievements": [
+        "ocaleni_z_pozaru"
+      ],
+      "notes": "Budynek odbudowany po pozarze (po 1906)"
+    },
+    "16": {
+      "name": "Drugi dom Ksawerka",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "17": {
+      "name": "Dom Krowckow Jozefa",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "18": {
+      "name": "Pensjonat Znicz",
+      "achievements": [
+        "miedzywojnie",
+        "letnik"
+      ]
+    },
+    "19": {
+      "name": "Willa Nadmorska",
+      "achievements": [
+        "miedzywojnie",
+        "letnik"
+      ]
+    },
+    "20": {
+      "name": "Budynek Augustyna Lange",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "21": {
+      "name": "Pozostalosci gosp. Jozefa Bizewskiego",
+      "achievements": [
+        "miedzywojnie",
+        "dynastia_bizewskich",
+        "slad_rettigow",
+        "tropiciel_czeczy",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Dom Carla Rettiga (koniec lat 20.); Checz Bizewskiego (po 1830)"
+    },
+    "22": {
+      "name": "Budynek Fala Aleksandra Adolpha",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "23": {
+      "name": "Dom Alberta Radtke",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "24": {
+      "name": "Pensjonat Jasna",
+      "achievements": [
+        "miedzywojnie",
+        "letnik"
+      ]
+    },
+    "25": {
+      "name": "Checz dla wyrobnikow na gosp. Voelknerow",
+      "achievements": [
+        "tropiciel_czeczy",
+        "gburowie_z_karwi",
+        "ocaleni_z_pozaru"
+      ],
+      "notes": "Pozar 15 maja 1865; ~1850 rok"
+    },
+    "26": {
+      "name": "Dawne budynki gosp. przy skrzyzowaniu",
+      "achievements": [
+        "duchy_przeszlosci"
+      ]
+    },
+    "27": {
+      "name": "Budynki Bazylego Adolpha",
+      "achievements": [
+        "miedzywojnie",
+        "letnik",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Pensjonat (po 1925); Bazar Nadmorski (1925) - nieistniejacy"
+    },
+    "28": {
+      "name": "Dom rodziny Kurow",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "29": {
+      "name": "Dom Jana Radtke",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "30": {
+      "name": "Dom Leona Radtke",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "31": {
+      "name": "Stara checz Koczka i szypra Jana Rotty",
+      "achievements": [
+        "archeolog",
+        "tropiciel_czeczy",
+        "duchy_przeszlosci",
+        "rybak"
+      ],
+      "notes": "Koniec XVIII w.; szypr = kapitan statku rybackiego"
+    },
+    "32": {
+      "name": "Budynki Voelknerow zwanych Gburami",
+      "achievements": [
+        "miedzywojnie",
+        "gburowie_z_karwi",
+        "letnik"
+      ],
+      "notes": "Pensjonat Jozefa Voelknera (1936)"
+    },
+    "33": {
+      "name": "Pensjonat Maria",
+      "achievements": [
+        "miedzywojnie",
+        "letnik"
+      ]
+    },
+    "34": {
+      "name": "Dom Krowcka",
+      "achievements": []
+    },
+    "35": {
+      "name": "Piekarnia Jozefa Fichta",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "36": {
+      "name": "Dom Hindenburga",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "37": {
+      "name": "Dom Janiszka",
+      "achievements": [],
+      "notes": "1901 rok - nie kwalifikuje sie do miedzywojnia"
+    },
+    "38": {
+      "name": "Budynki rodziny Wioldzego Michola",
+      "achievements": [
+        "miedzywojnie",
+        "dynastia_bizewskich",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Michal Bizewski (1932); wczesniej szopa Marteneska (1837)"
+    },
+    "39": {
+      "name": "Budynek rzeznika Jerzego Rathnau",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "40": {
+      "name": "Budynki rodziny Otta Wittbrodta",
+      "achievements": [
+        "archeolog",
+        "tropiciel_czeczy",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Dom Burgera (1909, rozebrany 2016); Stara checz Micholka (koniec XVIII w.)"
+    },
+    "41": {
+      "name": "Zabudowania Fersztereji",
+      "achievements": [
+        "lesniczy"
+      ],
+      "notes": "Nowa i stara lesniczowka + budynki gospodarcze"
+    },
+    "42": {
+      "name": "Retenszopa",
+      "achievements": [
+        "miedzywojnie",
+        "rybak"
+      ],
+      "notes": "Hangar na sprzet ratownictwa morskiego (1928)"
+    },
+    "43": {
+      "name": "Dom i karczma Wilhelma Senklera",
+      "achievements": [
+        "kamien_wegielny",
+        "bywalec"
+      ],
+      "notes": "Pierwszy murowany dom w Karwi (1880/1885)"
+    },
+    "44": {
+      "name": "Zabudowania starej szkoly",
+      "achievements": [
+        "pilny_uczen"
+      ],
+      "notes": "Budynek szkoly z 1892 roku"
+    },
+    "45": {
+      "name": "Stara checz rodziny Rettigow",
+      "achievements": [
+        "archeolog",
+        "slad_rettigow",
+        "tropiciel_czeczy",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Przed 1802 rokiem"
+    },
+    "46": {
+      "name": "Zabudowania gosp. Jakuba Bizewskiego",
+      "achievements": [
+        "dynastia_bizewskich",
+        "bywalec",
+        "gbur",
+        "duchy_przeszlosci",
+        "archeolog"
+      ],
+      "notes": "Zagroda jednobudynkowa i karczma (1802-1834); wczesniej zagroda (~1780)"
+    },
+    "47": {
+      "name": "Gospoda Fritza Rettiga",
+      "achievements": [
+        "bywalec",
+        "slad_rettigow",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Gospoda z sala taneczna (1909)"
+    },
+    "48": {
+      "name": "Zabudowania rodziny Rettigow",
+      "achievements": [
+        "slad_rettigow",
+        "letnik"
+      ],
+      "notes": "Dom i pensjonat Rettigow (1894)"
+    },
+    "49": {
+      "name": "Zabudowania gosp. Jana Mikolaja Bizewskiego",
+      "achievements": [
+        "dynastia_bizewskich",
+        "ocaleni_z_pozaru",
+        "slad_rettigow",
+        "tropiciel_czeczy",
+        "duchy_przeszlosci",
+        "gbur",
+        "archeolog"
+      ],
+      "notes": "Checz Jopka i Rettigow (~1860, splonela 13.07.1908); wczesniej zagroda (~1780)"
+    },
+    "50": {
+      "name": "Zabudowania rodziny Jopka",
+      "achievements": [
+        "dynastia_bizewskich",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Nowy dom Jopka (1909, zburzony 1993-98); Jopek = galaz Bizewskich"
+    },
+    "51": {
+      "name": "Zabudowania gosp. Parchemow (Bizewskich)",
+      "achievements": [
+        "dynastia_bizewskich",
+        "pielgrzym",
+        "gbur"
+      ],
+      "notes": "Dom Alberta Bizewskiego (1898); kapliczka NSP Jezusa; zagroda Marcina Bizewskiego"
+    },
+    "52": {
+      "name": "Zabudowania rodziny Dargatzow",
+      "achievements": [
+        "archeolog",
+        "bywalec",
+        "tropiciel_czeczy"
+      ],
+      "notes": "Stara checz i karczma Jakuba Wittbrodta (koniec XVIII w.)"
+    },
+    "53": {
+      "name": "Dom Jana Bizewskiego",
+      "achievements": [
+        "miedzywojnie",
+        "dynastia_bizewskich"
+      ]
+    },
+    "54": {
+      "name": "Dom Kramerka",
+      "achievements": [
+        "archeolog",
+        "tropiciel_czeczy"
+      ],
+      "notes": "Koniec XVIII w."
+    },
+    "55": {
+      "name": "Zabudowania gosp. Wittbrodtow",
+      "achievements": [
+        "duchy_przeszlosci",
+        "archeolog",
+        "gbur"
+      ],
+      "notes": "Nowy dom Micholka (pocz. XX w., rozebr. 1977); stara zagroda (~1780)"
+    },
+    "56": {
+      "name": "Dom Muzykenta",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "57": {
+      "name": "Stara checz Nebuka",
+      "achievements": [
+        "archeolog",
+        "tropiciel_czeczy",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Koniec XVIII w.; rozebrana ~1965"
+    },
+    "58": {
+      "name": "Nowy dom rodziny Topczen Mieszela",
+      "achievements": [
+        "miedzywojnie",
+        "gburowie_z_karwi",
+        "tropiciel_czeczy"
+      ],
+      "notes": "Michala Voelknera (pocz. lat 30.); wczesniej checz Topka (~1860)"
+    },
+    "59": {
+      "name": "Wschodnia czesc starej checzy Topka",
+      "achievements": [
+        "tropiciel_czeczy",
+        "duchy_przeszlosci"
+      ]
+    },
+    "60": {
+      "name": "Zabudowania gosp. Tomasza Wittbrodta",
+      "achievements": [
+        "duchy_przeszlosci",
+        "tropiciel_czeczy"
+      ],
+      "notes": "Wczesniej: Nowa checz Jana Voelknera i Jana Wittbrodta (~lata 60. XIX w.)"
+    },
+    "61": {
+      "name": "Dom na Kawlach",
+      "achievements": [
+        "miedzywojnie",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Dom (1932); wczesniej stara owczarnia (I pol. XIX w.)"
+    },
+    "62": {
+      "name": "Zabudowania gosp. Lachow (Voelknerow)",
+      "achievements": [
+        "miedzywojnie",
+        "gburowie_z_karwi",
+        "pielgrzym"
+      ],
+      "notes": "Nowy dom Lachsow (1929); Kapliczka sw. Antoniego Padewskiego (~1905)"
+    },
+    "63": {
+      "name": "Checze dla wyrobnikow na gosp. Lachsow (Voelknerow)",
+      "achievements": [
+        "tropiciel_czeczy",
+        "gburowie_z_karwi",
+        "duchy_przeszlosci"
+      ]
+    },
+    "64": {
+      "name": "Zabudowania gosp. soleckiego",
+      "achievements": [
+        "miedzywojnie",
+        "tropiciel_czeczy",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Dom Kreine (1936); stara checz Lietzauow (II pol. XIX w.)"
+    },
+    "65": {
+      "name": "Dom Antoniego Meyera",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    },
+    "66": {
+      "name": "Zabudowania okolicy starego krzyza",
+      "achievements": [
+        "miedzywojnie",
+        "tropiciel_czeczy",
+        "ocaleni_z_pozaru"
+      ],
+      "notes": "Dom Krzizewich (1931); wczesniej Krzizewa checz (II pol. XIX w.)"
+    },
+    "67": {
+      "name": "Parafia sw. Antoniego Padewskiego",
+      "achievements": [
+        "pielgrzym"
+      ],
+      "notes": "Kosciol (1948-1950) i plebania"
+    },
+    "68": {
+      "name": "Zagroda jednobudynkowa na Ogrodach",
+      "achievements": [
+        "gbur",
+        "duchy_przeszlosci"
+      ],
+      "notes": "Zagroda z Karwienskich Blot; rozebrana 2020"
+    },
+    "69": {
+      "name": "Zagroda jednobudynkowa Spalonego Jakuba",
+      "achievements": [
+        "gbur",
+        "ocaleni_z_pozaru"
+      ],
+      "notes": "Zagroda z Karwienskich Blot; prawdop. pozar w miedzywojniu"
+    },
+    "70": {
+      "name": "Zabudowania Brunona Hebla",
+      "achievements": [
+        "miedzywojnie"
+      ]
+    }
+  }
+}
