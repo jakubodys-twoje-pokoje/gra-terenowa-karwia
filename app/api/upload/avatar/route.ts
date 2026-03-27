@@ -33,5 +33,10 @@ export async function POST(req: NextRequest) {
   await mkdir(uploadsDir, { recursive: true });
   await writeFile(path.join(uploadsDir, filename), processed);
 
-  return NextResponse.json({ url: `/uploads/avatars/${filename}` });
+  // Return the processed image as base64 data URL so the client can display
+  // it immediately without a second HTTP request (avoids PM2 cluster race
+  // condition where a different instance handles the subsequent GET).
+  const dataUrl = `data:image/webp;base64,${processed.toString('base64')}`;
+
+  return NextResponse.json({ url: `/uploads/avatars/${filename}`, dataUrl });
 }

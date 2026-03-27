@@ -232,17 +232,16 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
     xhr.onload = async () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          const { url, error: apiErr } = JSON.parse(xhr.responseText);
+          const { url, dataUrl, error: apiErr } = JSON.parse(xhr.responseText);
           if (apiErr || !url) {
             setUploadError(apiErr ?? 'Błąd serwera przy uploading');
             setAvatarUrl(user.avatarUrl ?? null);
           } else {
-            // Preload the real image before swapping src so there's no broken-image flash
-            const realUrl = `${url}?t=${Date.now()}`;
-            const preloader = new window.Image();
-            preloader.onload = () => { setAvatarUrl(realUrl); URL.revokeObjectURL(preview); };
-            preloader.onerror = () => { setAvatarUrl(realUrl); setTimeout(() => URL.revokeObjectURL(preview), 500); };
-            preloader.src = realUrl;
+            // Show processed image immediately via data URL (already in memory,
+            // no second HTTP request → no PM2 cluster race condition).
+            // The plain `url` path is what gets persisted to the DB.
+            setAvatarUrl(dataUrl ?? `${url}?t=${Date.now()}`);
+            URL.revokeObjectURL(preview);
             const saveRes = await fetch('/api/profil', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
