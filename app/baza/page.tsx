@@ -17,7 +17,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   checza:    '🛖 Chëcze',
   zagroda:   '🏡 Zagrody',
   karczma:   '🍺 Karczmy',
-  pensjonat: '🏨 Pensjonaty',
+  pensjonat: '🛏️ Pensjonaty',
   sakralny:  '⛪ Sakralne',
   natura:    '🌲 Natura',
   morze:     '🐟 Morze',

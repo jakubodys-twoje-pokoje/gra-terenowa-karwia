@@ -8,7 +8,7 @@ const categories = [
   { value: 'checza',    label: 'Chëcza',    icon: '🛖', order: 1 },
   { value: 'zagroda',   label: 'Zagroda',   icon: '🏡', order: 2 },
   { value: 'karczma',   label: 'Karczma',   icon: '🍺', order: 3 },
-  { value: 'pensjonat', label: 'Pensjonat', icon: '🏨', order: 4 },
+  { value: 'pensjonat', label: 'Pensjonat', icon: '🛏️', order: 4 },
   { value: 'sakralny',  label: 'Sakralny',  icon: '⛪', order: 5 },
   { value: 'natura',    label: 'Natura',    icon: '🌲', order: 6 },
   { value: 'morze',     label: 'Morze',     icon: '🐟', order: 7 },

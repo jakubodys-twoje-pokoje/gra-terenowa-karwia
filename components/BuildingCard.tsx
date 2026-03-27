@@ -6,7 +6,7 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   checza:    { label: '🛖 Chëcza',    color: 'bg-amber-100 text-amber-800' },
   zagroda:   { label: '🏡 Zagroda',   color: 'bg-yellow-100 text-yellow-800' },
   karczma:   { label: '🍺 Karczma',   color: 'bg-orange-100 text-orange-700' },
-  pensjonat: { label: '🏨 Pensjonat', color: 'bg-purple-100 text-purple-700' },
+  pensjonat: { label: '🛏️ Pensjonat', color: 'bg-purple-100 text-purple-700' },
   sakralny:  { label: '⛪ Sakralny',  color: 'bg-blue-100 text-blue-700' },
   natura:    { label: '🌲 Natura',    color: 'bg-green-100 text-green-700' },
   morze:     { label: '🐟 Morze',     color: 'bg-cyan-100 text-cyan-700' },

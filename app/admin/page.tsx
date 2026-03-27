@@ -49,7 +49,7 @@ const CATEGORIES = [
   { value: 'checza',    label: '🛖 Chëcza' },
   { value: 'zagroda',   label: '🏡 Zagroda' },
   { value: 'karczma',   label: '🍺 Karczma' },
-  { value: 'pensjonat', label: '🏨 Pensjonat' },
+  { value: 'pensjonat', label: '🛏️ Pensjonat' },
   { value: 'sakralny',  label: '⛪ Sakralny' },
   { value: 'natura',    label: '🌲 Natura' },
   { value: 'morze',     label: '🐟 Morze' },

@@ -146,7 +146,7 @@ const achievements = [
   {
     name: 'Letnik',
     description: 'Zeskanuj 3 pensjonaty',
-    icon: '🏨', color: '#2A9D8F',
+    icon: '🛏️', color: '#2A9D8F',
     conditionType: 'building_set', conditionValue: 3,
     conditionCategory: null, buildingIds: JSON.stringify([12,14,18,19,24,27,32,33,48]), order: 110,
   },

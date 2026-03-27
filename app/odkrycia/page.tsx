@@ -152,7 +152,7 @@ const CAT_CONFIG: Record<string, { label: string; emoji: string; color: string }
   checza:    { label: 'Chëcze',    emoji: '🛖', color: '#D97706' },
   zagroda:   { label: 'Zagrody',   emoji: '🏡', color: '#CA8A04' },
   karczma:   { label: 'Karczmy',   emoji: '🍺', color: '#F97316' },
-  pensjonat: { label: 'Pensjonaty',emoji: '🏨', color: '#A855F7' },
+  pensjonat: { label: 'Pensjonaty',emoji: '🛏️', color: '#A855F7' },
   sakralny:  { label: 'Sakralne',  emoji: '⛪', color: '#3B82F6' },
   natura:    { label: 'Natura',    emoji: '🌲', color: '#22C55E' },
   morze:     { label: 'Morze',     emoji: '🐟', color: '#06B6D4' },
