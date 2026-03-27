@@ -361,56 +361,59 @@ export default function MapPage() {
         onMapReady={(h) => { mapHandle.current = h; }}
       />
 
-      {/* Stats pill */}
-      {buildings.length > 0 && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md flex items-center gap-2">
-          <MapPin size={13} className="text-ocean-500" />
-          <span className="text-xs font-bold text-ocean-900">
-            {discoveredIds.size} / {buildings.length} odkrytych
-          </span>
-        </div>
-      )}
-
-      {/* Behavioural tip bubble */}
+      {/* Behavioural tip bubble — full width strip at top */}
       {activeTip && (
-        <div className="absolute top-[3.25rem] left-1/2 -translate-x-1/2 z-[499] pointer-events-none animate-in fade-in slide-in-from-top-1 duration-300">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-md px-3 py-2 flex items-center gap-2 max-w-[260px]">
-            <span className="text-sm shrink-0">{activeTip.icon}</span>
-            <p className="text-[11px] font-semibold text-ocean-900 leading-snug">{activeTip.text}</p>
+        <div className="absolute top-4 inset-x-4 z-[499] pointer-events-none animate-in fade-in slide-in-from-top-1 duration-300">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-md px-3.5 py-2.5 flex items-center gap-2.5">
+            <span className="text-base shrink-0">{activeTip.icon}</span>
+            <p className="text-xs font-semibold text-ocean-900 leading-snug">{activeTip.text}</p>
           </div>
         </div>
       )}
 
-      {/* ── Map controls — inline row ── */}
-      <div className="absolute bottom-24 right-4 z-[500] flex flex-row items-center gap-2">
-        {/* Nearest undiscovered building */}
-        <button
-          onClick={handleNearest}
-          disabled={nearestLoading || buildings.length === 0}
-          className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3.5 py-3 flex items-center gap-2 hover:bg-white active:scale-95 transition-all disabled:opacity-50"
-          title="Najbliższy nieodkryty obiekt"
-        >
-          <Navigation size={18} className={`text-ocean-500 ${nearestLoading ? 'animate-pulse' : ''}`} />
-          <span className="text-xs font-bold text-ocean-800 leading-none">Najbliżej</span>
-        </button>
+      {/* ── Map controls — full-width row with counter on the left ── */}
+      <div className="absolute bottom-24 inset-x-4 z-[500] flex items-center justify-between">
+        {/* Discovery counter — left, styled like buttons */}
+        {buildings.length > 0 && (
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3.5 py-3 flex items-center gap-2">
+            <MapPin size={18} className="text-ocean-500" />
+            <span className="text-xs font-bold text-ocean-800 leading-none">
+              {discoveredIds.size} / {buildings.length}
+            </span>
+          </div>
+        )}
 
-        {/* Center on user — small square pill */}
-        <button
-          onClick={handleCenterOnUser}
-          className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center justify-center hover:bg-white active:scale-95 transition-all"
-          title="Moja lokalizacja"
-        >
-          <Crosshair size={18} className="text-ocean-500" />
-        </button>
+        {/* Right-side buttons */}
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Nearest undiscovered building */}
+          <button
+            onClick={handleNearest}
+            disabled={nearestLoading || buildings.length === 0}
+            className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3.5 py-3 flex items-center gap-2 hover:bg-white active:scale-95 transition-all disabled:opacity-50"
+            title="Najbliższy nieodkryty obiekt"
+          >
+            <Navigation size={18} className={`text-ocean-500 ${nearestLoading ? 'animate-pulse' : ''}`} />
+            <span className="text-xs font-bold text-ocean-800 leading-none">Najbliżej</span>
+          </button>
 
-        {/* Help / instructions */}
-        <button
-          onClick={() => setShowInstructions(true)}
-          className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center justify-center hover:bg-white active:scale-95 transition-all"
-          title="Jak grać?"
-        >
-          <HelpCircle size={18} className="text-ocean-500" />
-        </button>
+          {/* Center on user */}
+          <button
+            onClick={handleCenterOnUser}
+            className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center justify-center hover:bg-white active:scale-95 transition-all"
+            title="Moja lokalizacja"
+          >
+            <Crosshair size={18} className="text-ocean-500" />
+          </button>
+
+          {/* Help / instructions */}
+          <button
+            onClick={() => setShowInstructions(true)}
+            className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center justify-center hover:bg-white active:scale-95 transition-all"
+            title="Jak grać?"
+          >
+            <HelpCircle size={18} className="text-ocean-500" />
+          </button>
+        </div>
       </div>
 
       {/* Nearest toast */}
