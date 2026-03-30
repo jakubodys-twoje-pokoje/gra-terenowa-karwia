@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Compass, Trophy, Medal, Crown } from 'lucide-react';
 import Link from 'next/link';
 import AchievementBadge from '@/components/AchievementBadge';
+import { useAuth } from '@/lib/useAuth';
 
 interface Discovery {
   discoveredAt: string;
@@ -274,6 +275,7 @@ interface AchievementWithStatus {
 }
 
 export default function OdkryciaPage() {
+  const { user } = useAuth();
   const [discoveries, setDiscoveries] = useState<Discovery[]>([]);
   const [totalBuildings, setTotalBuildings] = useState(0);
   const [ranking, setRanking] = useState<RankEntry[]>([]);
@@ -283,7 +285,7 @@ export default function OdkryciaPage() {
   const [activeTab, setActiveTab] = useState<'stats' | 'odznaki' | 'ranking'>('stats');
 
   const load = useCallback(async () => {
-    const userId = getUserId();
+    const userId = user?.userId ?? getUserId();
     const [discRes, allRes, rankRes, achRes] = await Promise.all([
       fetch(`/api/odkrycia?userId=${userId}`),
       fetch('/api/budynki'),
@@ -300,7 +302,7 @@ export default function OdkryciaPage() {
     setCurrentUser(rankData.currentUser ?? null);
     setAchievements(Array.isArray(achs) ? achs : []);
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => { load(); }, [load]);
 

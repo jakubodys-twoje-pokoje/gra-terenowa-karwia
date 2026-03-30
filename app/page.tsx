@@ -167,7 +167,7 @@ export default function MapPage() {
   }, []);
 
   const load = useCallback(async () => {
-    const userId = getUserId();
+    const userId = user?.userId ?? getUserId();
     const [bRes, dRes] = await Promise.all([
       fetch('/api/budynki'),
       fetch(`/api/odkrycia?userId=${userId}`),
@@ -176,7 +176,7 @@ export default function MapPage() {
     const discoveries = dRes.ok ? await dRes.json() : [];
     setBuildings(allBuildings);
     setDiscoveredIds(new Set(discoveries.map((d: { building: { id: number } }) => d.building.id)));
-  }, []);
+  }, [user]);
 
   useEffect(() => { load(); }, [load]);
 

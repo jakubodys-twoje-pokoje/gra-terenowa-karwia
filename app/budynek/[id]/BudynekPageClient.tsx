@@ -8,6 +8,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import type { MapBuilding } from '@/components/MapComponent';
 import EasterEggPopup, { type EasterEggData } from '@/components/EasterEggPopup';
+import { useAuth } from '@/lib/useAuth';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
 
@@ -59,6 +60,7 @@ export default function BudynekPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
 
   const [building, setBuilding] = useState<Building | null>(null);
   const [nearby, setNearby] = useState<NearbyBuilding[]>([]);
@@ -73,7 +75,8 @@ export default function BudynekPage() {
   const [easterEgg, setEasterEgg] = useState<EasterEggData | null>(null);
 
   const load = useCallback(async () => {
-    const userId = getUserId();
+    // Logged-in users use their authenticated userId; guests use localStorage UUID
+    const userId = user?.userId ?? getUserId();
     const isScan = searchParams.get('scan') === '1';
 
     // If arriving from QR scan, mark as discovered first
@@ -164,7 +167,7 @@ export default function BudynekPage() {
       setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 60,  colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 300);
       setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 }, angle: 120, colors: ['#F5A623', '#0F5F92', '#ffffff'] }), 450);
     }, 800);
-  }, [id, searchParams]);
+  }, [id, searchParams, user]);
 
   useEffect(() => { load(); }, [load]);
 
