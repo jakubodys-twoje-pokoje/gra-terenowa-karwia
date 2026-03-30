@@ -15,18 +15,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${BASE_URL}/weryfikacja?error=wygasly`);
   }
 
-  // Migrate guest discoveries now that email is verified
-  if (record.guestUserId) {
-    await prisma.userDiscovery.updateMany({
-      where: { userId: record.guestUserId },
-      data: { userId: record.userId },
-    }).catch(() => null); // ignore duplicate conflicts
-  }
-
   const profile = await prisma.userProfile.update({
     where: { userId: record.userId },
     data: { emailVerified: true },
   });
+
+  // Migrate guest discoveries — use token's guestUserId or fall back to profile's
+  const guestId = record.guestUserId ?? profile.guestUserId;
+  if (guestId) {
+    // Move guest discoveries one-by-one to avoid failing the whole batch on duplicate
+    const guestDiscoveries = await prisma.userDiscovery.findMany({
+      where: { userId: guestId },
+      select: { buildingId: true },
+    });
+    for (const { buildingId } of guestDiscoveries) {
+      await prisma.userDiscovery.upsert({
+        where: { userId_buildingId: { userId: record.userId, buildingId } },
+        update: {},
+        create: { userId: record.userId, buildingId },
+      });
+    }
+    // Remove now-duplicate guest records
+    await prisma.userDiscovery.deleteMany({ where: { userId: guestId } });
+  }
 
   await prisma.emailVerificationToken.delete({ where: { token } });
 

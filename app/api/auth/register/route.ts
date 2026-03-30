@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   // Create account — emailVerified: false, no session issued yet
   await prisma.userProfile.create({
-    data: { userId: newUserId, email, passwordHash, nickname, city, emailVerified: false },
+    data: { userId: newUserId, email, passwordHash, nickname, city, emailVerified: false, guestUserId: guestUserId || null },
   });
 
   // Store guestUserId in token so discoveries migrate on verification
