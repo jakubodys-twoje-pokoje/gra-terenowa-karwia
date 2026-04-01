@@ -99,6 +99,7 @@ export default function AdminPage() {
   const [form, setForm]             = useState(EMPTY_FORM);
   const [gallery, setGallery]       = useState<GalleryItem[]>([]);
   const [galleryFetching, setGalleryFetching] = useState<boolean[]>([]);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [editingId, setEditingId]   = useState<number | null>(null);
   const [formError, setFormError]   = useState('');
   const [success, setSuccess]       = useState('');
@@ -303,6 +304,47 @@ export default function AdminPage() {
       cancelForm(); setTimeout(() => setSuccess(''), 3000);
       loadBuildings(password);
     } else { const err = await res.json(); setFormError(err.error || 'Błąd zapisu'); }
+  };
+
+  const fetchAllBuildingTitles = async () => {
+    const DELAY_MS = 400;
+    const toProcess = buildings
+      .map((b) => ({ id: b.id, images: b.images.filter((img) => img.url && !img.title) }))
+      .filter((b) => b.images.length > 0);
+    const totalImages = toProcess.reduce((s, b) => s + b.images.length, 0);
+    if (totalImages === 0) return;
+    setBatchProgress({ done: 0, total: totalImages });
+    let done = 0;
+    for (const { id, images } of toProcess) {
+      const building = buildings.find((b) => b.id === id)!;
+      const updatedImages = building.images.map((img) => ({ url: img.url, title: img.title ?? '', alt: img.alt ?? '' }));
+      for (const img of images) {
+        await new Promise((r) => setTimeout(r, DELAY_MS));
+        const meta = await fetchWpTitle(img.url);
+        if (meta) {
+          const idx = updatedImages.findIndex((u) => u.url === img.url);
+          if (idx !== -1) { updatedImages[idx] = { ...updatedImages[idx], title: meta.title || updatedImages[idx].title, alt: meta.alt || updatedImages[idx].alt }; }
+        }
+        done++;
+        setBatchProgress({ done, total: totalImages });
+      }
+      // Save updated gallery back to DB
+      await fetch(`/api/budynki/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+        body: JSON.stringify({ gallery: updatedImages }),
+      });
+      // Update local state
+      setBuildings((prev) => prev.map((b) => b.id !== id ? b : {
+        ...b,
+        images: b.images.map((img) => {
+          const u = updatedImages.find((u) => u.url === img.url);
+          return u ? { ...img, title: u.title || img.title, alt: u.alt || img.alt } : img;
+        }),
+      }));
+    }
+    setBatchProgress(null);
+    flash('Tytuły zdjęć zaktualizowane!');
   };
 
   const fetchAllTitles = async (items: GalleryItem[]) => {
@@ -524,6 +566,16 @@ export default function AdminPage() {
         <div className="flex items-center gap-2">
           {activeTab === 'budynki' && (<>
             <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvFile} />
+            <button
+              onClick={fetchAllBuildingTitles}
+              disabled={!!batchProgress}
+              className="flex items-center gap-2 border border-purple-300 text-purple-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-purple-50 transition disabled:opacity-50"
+              title="Pobierz tytuły zdjęć z metadanych WordPress dla wszystkich budynków"
+            >
+              {batchProgress
+                ? <><div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" /> {batchProgress.done}/{batchProgress.total}</>
+                : 'Pobierz tytuły zdjęć'}
+            </button>
             <button onClick={() => csvInputRef.current?.click()}
               className="flex items-center gap-2 border border-ocean-300 text-ocean-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-ocean-50 transition">
               <Upload size={14} /> Import CSV
