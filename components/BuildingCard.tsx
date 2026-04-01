@@ -15,6 +15,7 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
 
 interface Props {
   id: number;
+  number?: number | null;
   name: string;
   description: string;
   imageUrl?: string | null;
@@ -26,7 +27,7 @@ interface Props {
 }
 
 export default function BuildingCard({
-  id, name, description, imageUrl, outlineImageUrl, category, discovered, discoveredAt, showLink = true,
+  id, number, name, description, imageUrl, outlineImageUrl, category, discovered, discoveredAt, showLink = true,
 }: Props) {
   const cat = CATEGORY_LABELS[category] ?? { label: category, color: 'bg-gray-100 text-gray-600' };
   const undiscoveredSrc = outlineImageUrl ?? imageUrl;
@@ -70,7 +71,7 @@ export default function BuildingCard({
           {cat.label}
         </span>
         <h3 className="font-bold text-ocean-800 mt-2 leading-snug line-clamp-1">
-          {name}
+          {number != null ? `${number}. ${name}` : name}
         </h3>
         {discovered ? (
           <p className="text-gray-500 text-sm mt-1 line-clamp-2">{description}</p>

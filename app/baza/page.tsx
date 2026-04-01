@@ -6,6 +6,7 @@ import BuildingCard from '@/components/BuildingCard';
 
 interface Building {
   id: number;
+  number: number | null;
   name: string;
   description: string;
   imageUrl: string | null;
@@ -122,6 +123,7 @@ export default function BazaPage() {
               <BuildingCard
                 key={b.id}
                 id={b.id}
+                number={b.number}
                 name={b.name}
                 description={b.description}
                 imageUrl={b.imageUrl}
