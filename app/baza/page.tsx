@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { BookOpen } from 'lucide-react';
 import BuildingCard from '@/components/BuildingCard';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/lib/useAuth';
 
 interface Building {
   id: number;

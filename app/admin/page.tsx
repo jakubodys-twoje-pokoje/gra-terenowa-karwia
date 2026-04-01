@@ -305,11 +305,28 @@ export default function AdminPage() {
     } else { const err = await res.json(); setFormError(err.error || 'Błąd zapisu'); }
   };
 
+  const fetchAllTitles = async (items: GalleryItem[]) => {
+    const updated = [...items];
+    const fetching = items.map((_, i) => i);
+    setGalleryFetching(items.map(() => true));
+    await Promise.all(fetching.map(async (i) => {
+      if (!updated[i].url.trim() || updated[i].title) return;
+      const meta = await fetchWpTitle(updated[i].url.trim());
+      if (meta) { updated[i] = { ...updated[i], title: meta.title || updated[i].title, alt: meta.alt || updated[i].alt }; }
+    }));
+    setGallery(updated);
+    setGalleryFetching(items.map(() => false));
+  };
+
   const handleEdit = (b: Building) => {
     setForm({ number: b.number != null ? String(b.number) : '', name: b.name, description: b.description, address: b.address ?? '', lat: String(b.lat), lng: String(b.lng), imageUrl: b.imageUrl ?? '', outlineImageUrl: b.outlineImageUrl ?? '', qrUrl: b.qrUrl, category: b.category, hidden: b.hidden, published: b.published });
-    setGallery(b.images.map((i) => ({ url: i.url, title: i.title ?? '', alt: i.alt ?? '' })));
+    const items = b.images.map((i) => ({ url: i.url, title: i.title ?? '', alt: i.alt ?? '' }));
+    setGallery(items);
     setEditingId(b.id); setShowForm(true);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    // Auto-fetch titles for images that don't have one yet
+    const missing = items.filter((it) => it.url && !it.title);
+    if (missing.length > 0) fetchAllTitles(items);
   };
 
   const handleDelete = async (id: number, name: string) => {
@@ -767,9 +784,16 @@ export default function AdminPage() {
                       <Images size={15} /> Galeria
                       {gallery.length > 0 && <span className="bg-ocean-100 text-ocean-600 text-xs px-1.5 py-0.5 rounded-full">{gallery.length}</span>}
                     </span>
-                    <button type="button" onClick={() => setGallery((g) => [...g, { url: '', title: '', alt: '' }])} className="flex items-center gap-1 text-xs text-ocean-500 font-semibold hover:text-ocean-700">
-                      <Plus size={13} /> Dodaj
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {gallery.some((g) => g.url && !g.title) && (
+                        <button type="button" onClick={() => fetchAllTitles(gallery)} className="flex items-center gap-1 text-xs text-purple-500 font-semibold hover:text-purple-700">
+                          Pobierz tytuły
+                        </button>
+                      )}
+                      <button type="button" onClick={() => setGallery((g) => [...g, { url: '', title: '', alt: '' }])} className="flex items-center gap-1 text-xs text-ocean-500 font-semibold hover:text-ocean-700">
+                        <Plus size={13} /> Dodaj
+                      </button>
+                    </div>
                   </div>
                   {gallery.length === 0 && <p className="text-xs text-gray-400 text-center py-1">Brak zdjęć — kliknij Dodaj</p>}
                   {gallery.map((item, i) => (
