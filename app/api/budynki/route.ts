@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     const buildings = await prisma.building.findMany({
       where,
-      orderBy: { name: 'asc' },
+      orderBy: [{ number: 'asc' }, { name: 'asc' }],
       select: {
         id: true, number: true, name: true, description: true, address: true,
         lat: true, lng: true, imageUrl: true, outlineImageUrl: true,
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     // Fallback: BuildingImage table may not exist yet on server (run prisma db push)
     const buildings = await prisma.building.findMany({
       where,
-      orderBy: { name: 'asc' },
+      orderBy: [{ number: 'asc' }, { name: 'asc' }],
       select: {
         id: true, name: true, description: true, address: true,
         lat: true, lng: true, imageUrl: true, outlineImageUrl: true,
