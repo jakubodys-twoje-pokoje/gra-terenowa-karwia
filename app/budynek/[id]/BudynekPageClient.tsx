@@ -23,10 +23,11 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   historia:  { label: '🏛️ Historia',  color: 'bg-stone-100 text-stone-700' },
 };
 
-interface BuildingImage { id: number; url: string; order: number; }
+interface BuildingImage { id: number; url: string; title: string | null; alt: string | null; order: number; }
 
 interface Building {
   id: number;
+  number: number | null;
   name: string;
   description: string;
   address: string | null;
@@ -71,7 +72,7 @@ export default function BudynekPage() {
   const [notFound, setNotFound] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [showAchievementToast, setShowAchievementToast] = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ src: string; title: string | null; alt: string | null } | null>(null);
   const [easterEgg, setEasterEgg] = useState<EasterEggData | null>(null);
 
   const load = useCallback(async () => {
@@ -278,7 +279,7 @@ export default function BudynekPage() {
       {/* Hero image */}
       <div className="relative h-64 bg-gradient-to-br from-ocean-300 to-ocean-600 overflow-hidden">
         {building.imageUrl ? (
-          <button type="button" className="w-full h-full" onClick={() => setLightboxSrc(building.imageUrl!)}>
+          <button type="button" className="w-full h-full" onClick={() => setLightbox({ src: building.imageUrl!, title: null, alt: building.name })}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={building.imageUrl} alt={building.name} className="w-full h-full object-cover" />
           </button>
@@ -305,7 +306,11 @@ export default function BudynekPage() {
 
         {/* Description */}
         <div className="bg-white rounded-3xl p-5 mt-4 shadow-card">
-          <p className="text-gray-600 text-sm leading-relaxed">{building.description}</p>
+          <div
+            className="prose prose-sm max-w-none text-gray-600 leading-relaxed"
+            // eslint-disable-next-line react/no-danger
+            dangerouslySetInnerHTML={{ __html: building.description }}
+          />
         </div>
 
         {/* Gallery */}
@@ -316,11 +321,14 @@ export default function BudynekPage() {
                 <button
                   key={img.id}
                   type="button"
-                  onClick={() => setLightboxSrc(img.url)}
-                  className="shrink-0 w-64 h-44 rounded-2xl overflow-hidden shadow-card snap-start active:scale-95 transition-transform"
+                  onClick={() => setLightbox({ src: img.url, title: img.title, alt: img.alt })}
+                  className="shrink-0 w-64 rounded-2xl overflow-hidden shadow-card snap-start active:scale-95 transition-transform"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt={building.name} className="w-full h-full object-cover" />
+                  <img src={img.url} alt={img.alt ?? img.title ?? building.name} className="w-full h-44 object-cover" />
+                  {img.title && (
+                    <p className="px-3 py-2 text-xs font-semibold text-ocean-900 text-left bg-white leading-snug">{img.title}</p>
+                  )}
                 </button>
               ))}
             </div>
@@ -418,26 +426,32 @@ export default function BudynekPage() {
       )}
 
       {/* Lightbox */}
-      {lightboxSrc && (
+      {lightbox && (
         <div
-          className="fixed inset-0 z-[950] bg-black/95 flex items-center justify-center"
-          onClick={() => setLightboxSrc(null)}
+          className="fixed inset-0 z-[950] bg-black/95 flex flex-col items-center justify-center"
+          onClick={() => setLightbox(null)}
         >
           <button
             type="button"
             className="absolute top-5 right-5 text-white/60 hover:text-white transition p-2"
-            onClick={() => setLightboxSrc(null)}
+            onClick={() => setLightbox(null)}
             aria-label="Zamknij"
           >
             <X size={30} />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={lightboxSrc}
-            alt=""
-            className="max-w-full max-h-full object-contain select-none"
+            src={lightbox.src}
+            alt={lightbox.alt ?? lightbox.title ?? ''}
+            className="max-w-full max-h-[80vh] object-contain select-none"
             onClick={(e) => e.stopPropagation()}
           />
+          {(lightbox.title || lightbox.alt) && (
+            <div className="mt-3 px-6 text-center" onClick={(e) => e.stopPropagation()}>
+              {lightbox.title && <p className="text-white font-semibold text-sm">{lightbox.title}</p>}
+              {lightbox.alt && <p className="text-white/60 text-xs mt-0.5">{lightbox.alt}</p>}
+            </div>
+          )}
         </div>
       )}
 

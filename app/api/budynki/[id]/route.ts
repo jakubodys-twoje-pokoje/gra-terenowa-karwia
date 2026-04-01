@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   const body = await req.json();
-  const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
+  const { number, name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
 
   if (lat != null) {
     const latNum = Number(lat);
@@ -41,12 +41,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
   }
 
+  type GalleryItem = { url: string; title?: string; alt?: string };
+
   try {
     const building = await prisma.building.update({
       where: { id: Number(params.id) },
       data: {
+        ...(number !== undefined && { number: number ?? null }),
         ...(name && { name }),
-        ...(description && { description }),
+        ...(description !== undefined && { description }),
         ...(address !== undefined && { address }),
         ...(lat != null && { lat: Number(lat) }),
         ...(lng != null && { lng: Number(lng) }),
@@ -59,9 +62,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         ...(gallery !== undefined && {
           images: {
             deleteMany: {},
-            create: (gallery as string[])
-              .filter((url) => url.trim())
-              .map((url, i) => ({ url: url.trim(), order: i })),
+            create: (gallery as GalleryItem[])
+              .filter((g) => g.url?.trim())
+              .map((g, i) => ({
+                url: g.url.trim(),
+                title: g.title?.trim() || null,
+                alt: g.alt?.trim() || null,
+                order: i,
+              })),
           },
         }),
       },

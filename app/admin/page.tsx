@@ -6,11 +6,13 @@ import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, X
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
+const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), { ssr: false });
 
-interface BuildingImage { id: number; url: string; order: number; }
+interface BuildingImage { id: number; url: string; title: string | null; alt: string | null; order: number; }
+interface GalleryItem { url: string; title: string; alt: string; }
 
 interface Building {
-  id: number; name: string; description: string; address?: string;
+  id: number; number: number | null; name: string; description: string; address?: string;
   lat: number; lng: number; imageUrl?: string; outlineImageUrl?: string;
   qrUrl: string; category: string; images: BuildingImage[];
   hidden: boolean; published: boolean;
@@ -57,7 +59,7 @@ const CATEGORIES = [
 ];
 
 const EMPTY_FORM = {
-  name: '', description: '', address: '',
+  number: '', name: '', description: '', address: '',
   lat: '54.7505', lng: '17.8670',
   imageUrl: '', outlineImageUrl: '', qrUrl: '', category: 'historia',
   hidden: false, published: true,
@@ -77,7 +79,7 @@ export default function AdminPage() {
   const [guestCount, setGuestCount] = useState(0);
   const [loading, setLoading]       = useState(false);
   const [form, setForm]             = useState(EMPTY_FORM);
-  const [gallery, setGallery]       = useState<string[]>([]);
+  const [gallery, setGallery]       = useState<GalleryItem[]>([]);
   const [editingId, setEditingId]   = useState<number | null>(null);
   const [formError, setFormError]   = useState('');
   const [success, setSuccess]       = useState('');
@@ -273,7 +275,7 @@ export default function AdminPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    const body = { ...form, lat: parseFloat(form.lat), lng: parseFloat(form.lng), outlineImageUrl: form.outlineImageUrl || null, gallery: gallery.filter((u) => u.trim()) };
+    const body = { ...form, number: form.number ? parseInt(form.number) : null, lat: parseFloat(form.lat), lng: parseFloat(form.lng), outlineImageUrl: form.outlineImageUrl || null, gallery: gallery.filter((g) => g.url.trim()) };
     const url    = editingId ? `/api/budynki/${editingId}` : '/api/budynki';
     const method = editingId ? 'PUT' : 'POST';
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
@@ -285,8 +287,8 @@ export default function AdminPage() {
   };
 
   const handleEdit = (b: Building) => {
-    setForm({ name: b.name, description: b.description, address: b.address ?? '', lat: String(b.lat), lng: String(b.lng), imageUrl: b.imageUrl ?? '', outlineImageUrl: b.outlineImageUrl ?? '', qrUrl: b.qrUrl, category: b.category, hidden: b.hidden, published: b.published });
-    setGallery(b.images.map((i) => i.url));
+    setForm({ number: b.number != null ? String(b.number) : '', name: b.name, description: b.description, address: b.address ?? '', lat: String(b.lat), lng: String(b.lng), imageUrl: b.imageUrl ?? '', outlineImageUrl: b.outlineImageUrl ?? '', qrUrl: b.qrUrl, category: b.category, hidden: b.hidden, published: b.published });
+    setGallery(b.images.map((i) => ({ url: i.url, title: i.title ?? '', alt: i.alt ?? '' })));
     setEditingId(b.id); setShowForm(true);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   };
@@ -643,8 +645,14 @@ export default function AdminPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3">
-                <input required placeholder="Nazwa budynku" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="input" />
-                <textarea required placeholder="Opis (widoczny po odkryciu)" rows={3} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="input resize-none" />
+                <div className="grid grid-cols-[80px_1fr] gap-2">
+                  <input type="number" placeholder="Nr" value={form.number} onChange={(e) => setForm((f) => ({ ...f, number: e.target.value }))} className="input text-center" title="Numer tabliczki" />
+                  <input required placeholder="Nazwa budynku" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="input" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-1 px-1">Opis (widoczny po odkryciu)</p>
+                  <RichTextEditor value={form.description} onChange={(html) => setForm((f) => ({ ...f, description: html }))} placeholder="Opis budynku…" />
+                </div>
                 <input placeholder="Adres (opcjonalnie)" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} className="input" />
 
                 <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className="input">
@@ -736,15 +744,19 @@ export default function AdminPage() {
                       <Images size={15} /> Galeria
                       {gallery.length > 0 && <span className="bg-ocean-100 text-ocean-600 text-xs px-1.5 py-0.5 rounded-full">{gallery.length}</span>}
                     </span>
-                    <button type="button" onClick={() => setGallery((g) => [...g, ''])} className="flex items-center gap-1 text-xs text-ocean-500 font-semibold hover:text-ocean-700">
+                    <button type="button" onClick={() => setGallery((g) => [...g, { url: '', title: '', alt: '' }])} className="flex items-center gap-1 text-xs text-ocean-500 font-semibold hover:text-ocean-700">
                       <Plus size={13} /> Dodaj
                     </button>
                   </div>
                   {gallery.length === 0 && <p className="text-xs text-gray-400 text-center py-1">Brak zdjęć — kliknij Dodaj</p>}
-                  {gallery.map((url, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input placeholder={`URL zdjęcia ${i + 1}`} value={url} onChange={(e) => setGallery((g) => g.map((u, idx) => idx === i ? e.target.value : u))} className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400" />
-                      <button type="button" onClick={() => setGallery((g) => g.filter((_, idx) => idx !== i))} className="p-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 shrink-0"><X size={13} /></button>
+                  {gallery.map((item, i) => (
+                    <div key={i} className="border border-gray-100 rounded-xl p-2 space-y-1.5 bg-gray-50">
+                      <div className="flex items-center gap-2">
+                        <input placeholder={`URL zdjęcia ${i + 1}`} value={item.url} onChange={(e) => setGallery((g) => g.map((it, idx) => idx === i ? { ...it, url: e.target.value } : it))} className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400 bg-white" />
+                        <button type="button" onClick={() => setGallery((g) => g.filter((_, idx) => idx !== i))} className="p-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 shrink-0"><X size={13} /></button>
+                      </div>
+                      <input placeholder="Tytuł (widoczny w lightbox)" value={item.title} onChange={(e) => setGallery((g) => g.map((it, idx) => idx === i ? { ...it, title: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400 bg-white" />
+                      <input placeholder="Opis / alt (meta, opcjonalnie)" value={item.alt} onChange={(e) => setGallery((g) => g.map((it, idx) => idx === i ? { ...it, alt: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400 bg-white" />
                     </div>
                   ))}
                 </div>

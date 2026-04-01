@@ -10,10 +10,10 @@ export async function GET(req: NextRequest) {
       where,
       orderBy: { name: 'asc' },
       select: {
-        id: true, name: true, description: true, address: true,
+        id: true, number: true, name: true, description: true, address: true,
         lat: true, lng: true, imageUrl: true, outlineImageUrl: true,
         category: true, qrUrl: true, hidden: true, published: true,
-        images: { orderBy: { order: 'asc' }, select: { id: true, url: true, order: true } },
+        images: { orderBy: { order: 'asc' }, select: { id: true, url: true, title: true, alt: true, order: true } },
       },
     });
     return NextResponse.json(buildings);
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
+  const { number, name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
 
   if (!name || !description || lat == null || lng == null || !qrUrl) {
     return NextResponse.json({ error: 'Brakujące pola' }, { status: 400 });
@@ -51,17 +51,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Nieprawidłowe koordynaty (lat: −90…90, lng: −180…180)' }, { status: 400 });
   }
 
+  type GalleryItem = { url: string; title?: string; alt?: string };
+  const galleryItems: GalleryItem[] = (gallery ?? []).filter((g: GalleryItem) => g.url?.trim());
+
   try {
     const building = await prisma.building.create({
       data: {
+        number: number ?? null,
         name, description, address, lat: latNum, lng: lngNum,
         imageUrl, outlineImageUrl, qrUrl, category: category || 'landmark',
         hidden: hidden ?? false,
         published: published ?? true,
         images: {
-          create: ((gallery as string[] | undefined) ?? [])
-            .filter((url) => url.trim())
-            .map((url, i) => ({ url: url.trim(), order: i })),
+          create: galleryItems.map((g, i) => ({
+            url: g.url.trim(),
+            title: g.title?.trim() || null,
+            alt: g.alt?.trim() || null,
+            order: i,
+          })),
         },
       },
       include: { images: { orderBy: { order: 'asc' } } },

@@ -8,8 +8,9 @@ datasource db {
 
 model Building {
   id              Int      @id @default(autoincrement())
+  number          Int?     // physical sign number on the building
   name            String
-  description     String
+  description     String   // HTML from rich text editor
   address         String?
   lat             Float
   lng             Float
@@ -33,6 +34,8 @@ model BuildingImage {
   buildingId Int
   building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   url        String
+  title      String?  // caption shown in lightbox
+  alt        String?  // alt text / image description from meta
   order      Int      @default(0)
 }
 
