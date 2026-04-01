@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { BookOpen } from 'lucide-react';
 import BuildingCard from '@/components/BuildingCard';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Building {
   id: number;
@@ -25,7 +26,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   historia:  '🏛️ Historia',
 };
 
-type Filter = 'all' | 'discovered' | 'undiscovered';
+type DiscoveryFilter = 'all' | 'discovered' | 'undiscovered';
 
 function getUserId(): string {
   let id = localStorage.getItem('karwia_user_id');
@@ -34,13 +35,15 @@ function getUserId(): string {
 }
 
 export default function BazaPage() {
+  const { user } = useAuth();
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [discoveredIds, setDiscoveredIds] = useState<Set<number>>(new Set());
-  const [filter, setFilter] = useState<Filter>('all');
+  const [discoveryFilter, setDiscoveryFilter] = useState<DiscoveryFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const userId = getUserId();
+    const userId = user?.userId ?? getUserId();
     const [bRes, dRes] = await Promise.all([
       fetch('/api/budynki'),
       fetch(`/api/odkrycia?userId=${userId}`),
@@ -50,21 +53,19 @@ export default function BazaPage() {
     setBuildings(all);
     setDiscoveredIds(new Set(discoveries.map((d: { building: { id: number } }) => d.building.id)));
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => { load(); }, [load]);
 
+  // Derive available categories from loaded buildings
+  const categories = Array.from(new Set(buildings.map((b) => b.category)));
+
   const filtered = buildings.filter((b) => {
-    if (filter === 'discovered') return discoveredIds.has(b.id);
-    if (filter === 'undiscovered') return !discoveredIds.has(b.id);
+    if (discoveryFilter === 'discovered' && !discoveredIds.has(b.id)) return false;
+    if (discoveryFilter === 'undiscovered' && discoveredIds.has(b.id)) return false;
+    if (categoryFilter && b.category !== categoryFilter) return false;
     return true;
   });
-
-  const grouped = filtered.reduce<Record<string, Building[]>>((acc, b) => {
-    if (!acc[b.category]) acc[b.category] = [];
-    acc[b.category].push(b);
-    return acc;
-  }, {});
 
   return (
     <div className="px-4 pt-6 pb-4">
@@ -81,20 +82,49 @@ export default function BazaPage() {
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex bg-gray-100 rounded-2xl p-1 mb-5 gap-1 mt-4">
-        {([['all', 'Wszystkie'], ['discovered', 'Odkryte'], ['undiscovered', 'Nieodkryte']] as [Filter, string][]).map(([val, label]) => (
+      {/* Discovery filter tabs */}
+      <div className="flex bg-gray-100 rounded-2xl p-1 mb-3 gap-1 mt-4">
+        {([['all', 'Wszystkie'], ['discovered', 'Odkryte'], ['undiscovered', 'Nieodkryte']] as [DiscoveryFilter, string][]).map(([val, label]) => (
           <button
             key={val}
-            onClick={() => setFilter(val)}
+            onClick={() => setDiscoveryFilter(val)}
             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-              filter === val ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400'
+              discoveryFilter === val ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400'
             }`}
           >
             {label}
           </button>
         ))}
       </div>
+
+      {/* Category filter chips */}
+      {!loading && categories.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+          <button
+            onClick={() => setCategoryFilter(null)}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              categoryFilter === null
+                ? 'bg-ocean-600 text-white'
+                : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            Wszystkie
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                categoryFilter === cat
+                  ? 'bg-ocean-600 text-white'
+                  : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              {CATEGORY_LABELS[cat] ?? cat}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading && (
         <div className="flex justify-center py-16">
@@ -105,37 +135,32 @@ export default function BazaPage() {
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16 text-gray-400">
           <div className="text-5xl mb-3">
-            {filter === 'discovered' ? '🗺️' : filter === 'undiscovered' ? '🎉' : '🏗️'}
+            {discoveryFilter === 'discovered' ? '🗺️' : discoveryFilter === 'undiscovered' ? '🎉' : '🏗️'}
           </div>
           <p>
-            {filter === 'discovered' ? 'Nie masz jeszcze odkryć.' : filter === 'undiscovered' ? 'Odkryłeś wszystkie miejsca!' : 'Baza jest pusta. Wróć wkrótce!'}
+            {discoveryFilter === 'discovered' ? 'Nie masz jeszcze odkryć.' : discoveryFilter === 'undiscovered' ? 'Odkryłeś wszystkie miejsca!' : 'Baza jest pusta. Wróć wkrótce!'}
           </p>
         </div>
       )}
 
-      {!loading && Object.entries(grouped).map(([category, items]) => (
-        <div key={category} className="mb-6">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-ocean-500 mb-3">
-            {CATEGORY_LABELS[category] ?? category}
-          </h2>
-          <div className="grid grid-cols-1 gap-4">
-            {items.map((b) => (
-              <BuildingCard
-                key={b.id}
-                id={b.id}
-                number={b.number}
-                name={b.name}
-                description={b.description}
-                imageUrl={b.imageUrl}
-                outlineImageUrl={b.outlineImageUrl}
-                category={b.category}
-                discovered={discoveredIds.has(b.id)}
-                showLink
-              />
-            ))}
-          </div>
+      {!loading && filtered.length > 0 && (
+        <div className="grid grid-cols-1 gap-4">
+          {filtered.map((b) => (
+            <BuildingCard
+              key={b.id}
+              id={b.id}
+              number={b.number}
+              name={b.name}
+              description={b.description}
+              imageUrl={b.imageUrl}
+              outlineImageUrl={b.outlineImageUrl}
+              category={b.category}
+              discovered={discoveredIds.has(b.id)}
+              showLink
+            />
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }

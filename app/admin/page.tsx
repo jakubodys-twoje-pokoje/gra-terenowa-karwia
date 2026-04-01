@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle, Tag, Trophy, Egg, Download } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle, Tag, Trophy, Egg, Download, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
@@ -58,6 +58,24 @@ const CATEGORIES = [
   { value: 'historia',  label: '🏛️ Historia' },
 ];
 
+async function fetchWpTitle(imageUrl: string): Promise<{ title: string; alt: string } | null> {
+  try {
+    const u = new URL(imageUrl);
+    const filename = u.pathname.split('/').pop()?.replace(/\.[^.]+$/, '');
+    if (!filename) return null;
+    const api = `${u.origin}/wp-json/wp/v2/media?slug=${encodeURIComponent(filename)}&_fields=title,alt_text`;
+    const res = await fetch(api);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const title = (data[0].title?.rendered as string ?? '').replace(/&#8211;/g, '–').replace(/&amp;/g, '&').replace(/&#[0-9]+;/g, (m: string) => String.fromCharCode(parseInt(m.slice(2, -1)))).trim();
+    const alt = (data[0].alt_text as string ?? '').trim();
+    return { title, alt };
+  } catch {
+    return null;
+  }
+}
+
 const EMPTY_FORM = {
   number: '', name: '', description: '', address: '',
   lat: '54.7505', lng: '17.8670',
@@ -80,6 +98,7 @@ export default function AdminPage() {
   const [loading, setLoading]       = useState(false);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [gallery, setGallery]       = useState<GalleryItem[]>([]);
+  const [galleryFetching, setGalleryFetching] = useState<boolean[]>([]);
   const [editingId, setEditingId]   = useState<number | null>(null);
   const [formError, setFormError]   = useState('');
   const [success, setSuccess]       = useState('');
@@ -757,6 +776,20 @@ export default function AdminPage() {
                     <div key={i} className="border border-gray-100 rounded-xl p-2 space-y-1.5 bg-gray-50">
                       <div className="flex items-center gap-2">
                         <input placeholder={`URL zdjęcia ${i + 1}`} value={item.url} onChange={(e) => setGallery((g) => g.map((it, idx) => idx === i ? { ...it, url: e.target.value } : it))} className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400 bg-white" />
+                        <button
+                          type="button"
+                          title="Pobierz tytuł z metadanych"
+                          disabled={!item.url.trim() || galleryFetching[i]}
+                          onClick={async () => {
+                            setGalleryFetching((f) => { const n = [...f]; n[i] = true; return n; });
+                            const meta = await fetchWpTitle(item.url.trim());
+                            setGalleryFetching((f) => { const n = [...f]; n[i] = false; return n; });
+                            if (meta) setGallery((g) => g.map((it, idx) => idx === i ? { ...it, title: meta.title || it.title, alt: meta.alt || it.alt } : it));
+                          }}
+                          className="p-1.5 rounded-lg bg-ocean-50 text-ocean-400 hover:bg-ocean-100 disabled:opacity-30 shrink-0"
+                        >
+                          {galleryFetching[i] ? <div className="w-3.5 h-3.5 border-2 border-ocean-400 border-t-transparent rounded-full animate-spin" /> : <Sparkles size={13} />}
+                        </button>
                         <button type="button" onClick={() => setGallery((g) => g.filter((_, idx) => idx !== i))} className="p-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 shrink-0"><X size={13} /></button>
                       </div>
                       <input placeholder="Tytuł (widoczny w lightbox)" value={item.title} onChange={(e) => setGallery((g) => g.map((it, idx) => idx === i ? { ...it, title: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ocean-400 bg-white" />
