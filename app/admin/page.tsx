@@ -731,7 +731,11 @@ export default function AdminPage() {
                   {pickingCoords ? 'Kliknij na mapie po prawej…' : 'Wybierz lokalizację na mapie'}
                 </button>
 
-                <input required placeholder="URL kodu QR (np. https://karwia.pl/qr/budynek-1)" value={form.qrUrl} onChange={(e) => setForm((f) => ({ ...f, qrUrl: e.target.value }))} className="input" />
+                <input required placeholder="URL kodu QR (np. https://karwia.pl/.../11)" value={form.qrUrl} onChange={(e) => {
+                  const url = e.target.value;
+                  const match = /(\d+)\/?$/.exec(url);
+                  setForm((f) => ({ ...f, qrUrl: url, number: match ? match[1] : f.number }));
+                }} className="input" />
                 <p className="text-xs text-gray-400 px-1">💡 Zeskanuj swój kod QR telefonem i wklej otworzony adres URL tutaj.</p>
 
                 <input placeholder="URL zdjęcia okładkowego (opcjonalnie)" value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} className="input" />
