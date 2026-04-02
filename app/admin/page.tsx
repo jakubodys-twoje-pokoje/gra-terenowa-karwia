@@ -77,7 +77,7 @@ async function fetchWpTitle(imageUrl: string): Promise<{ title: string; alt: str
 }
 
 const EMPTY_FORM = {
-  number: '', name: '', description: '', address: '',
+  name: '', description: '', address: '',
   lat: '54.7505', lng: '17.8670',
   imageUrl: '', outlineImageUrl: '', qrUrl: '', category: 'historia',
   hidden: false, published: true,
@@ -295,7 +295,7 @@ export default function AdminPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    const body = { ...form, number: form.number ? parseInt(form.number) : null, lat: parseFloat(form.lat), lng: parseFloat(form.lng), outlineImageUrl: form.outlineImageUrl || null, gallery: gallery.filter((g) => g.url.trim()) };
+    const body = { ...form, lat: parseFloat(form.lat), lng: parseFloat(form.lng), outlineImageUrl: form.outlineImageUrl || null, gallery: gallery.filter((g) => g.url.trim()) };
     const url    = editingId ? `/api/budynki/${editingId}` : '/api/budynki';
     const method = editingId ? 'PUT' : 'POST';
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
@@ -361,7 +361,7 @@ export default function AdminPage() {
   };
 
   const handleEdit = (b: Building) => {
-    setForm({ number: b.number != null ? String(b.number) : '', name: b.name, description: b.description, address: b.address ?? '', lat: String(b.lat), lng: String(b.lng), imageUrl: b.imageUrl ?? '', outlineImageUrl: b.outlineImageUrl ?? '', qrUrl: b.qrUrl, category: b.category, hidden: b.hidden, published: b.published });
+    setForm({ name: b.name, description: b.description, address: b.address ?? '', lat: String(b.lat), lng: String(b.lng), imageUrl: b.imageUrl ?? '', outlineImageUrl: b.outlineImageUrl ?? '', qrUrl: b.qrUrl, category: b.category, hidden: b.hidden, published: b.published });
     const items = b.images.map((i) => ({ url: i.url, title: i.title ?? '', alt: i.alt ?? '' }));
     setGallery(items);
     setEditingId(b.id); setShowForm(true);
@@ -733,10 +733,7 @@ export default function AdminPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <input type="number" placeholder="Nr" value={form.number} onChange={(e) => setForm((f) => ({ ...f, number: e.target.value }))} className="input text-center" title="Numer tabliczki" />
-                  <input required placeholder="Nazwa budynku" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="input" />
-                </div>
+                <input required placeholder="Nazwa budynku" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="input" />
                 <div>
                   <p className="text-xs text-gray-400 mb-1 px-1">Opis (widoczny po odkryciu)</p>
                   <RichTextEditor value={form.description} onChange={(html) => setForm((f) => ({ ...f, description: html }))} placeholder="Opis budynku…" />
@@ -822,7 +819,7 @@ export default function AdminPage() {
                 <input required placeholder="URL kodu QR (np. https://karwia.pl/.../11)" value={form.qrUrl} onChange={(e) => {
                   const url = e.target.value;
                   const match = /(\d+)\/?$/.exec(url);
-                  setForm((f) => ({ ...f, qrUrl: url, number: match ? match[1] : f.number }));
+                  setForm((f) => ({ ...f, qrUrl: url }));
                 }} className="input" />
                 <p className="text-xs text-gray-400 px-1">💡 Zeskanuj swój kod QR telefonem i wklej otworzony adres URL tutaj.</p>
 

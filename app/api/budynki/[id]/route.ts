@@ -26,7 +26,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   const body = await req.json();
-  const { number, name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
+  const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
+  const numberMatch = qrUrl ? /(\d+)\/?$/.exec(qrUrl) : null;
+  const number = numberMatch ? parseInt(numberMatch[1], 10) : undefined;
 
   if (lat != null) {
     const latNum = Number(lat);
@@ -47,7 +49,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const building = await prisma.building.update({
       where: { id: Number(params.id) },
       data: {
-        ...(number !== undefined && { number: number ?? null }),
+        ...(number !== undefined && { number }),
         ...(name && { name }),
         ...(description !== undefined && { description }),
         ...(address !== undefined && { address }),

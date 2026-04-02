@@ -16,6 +16,13 @@ export async function GET(req: NextRequest) {
         images: { orderBy: { order: 'asc' }, select: { id: true, url: true, title: true, alt: true, order: true } },
       },
     });
+    // SQLite sorts NULLs first in ASC — move buildings without number to the end
+    buildings.sort((a, b) => {
+      if (a.number == null && b.number == null) return a.name.localeCompare(b.name);
+      if (a.number == null) return 1;
+      if (b.number == null) return -1;
+      return a.number - b.number;
+    });
     return NextResponse.json(buildings);
   } catch {
     // Fallback: BuildingImage table may not exist yet on server (run prisma db push)
@@ -39,7 +46,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { number, name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
+  const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
 
   if (!name || !description || lat == null || lng == null || !qrUrl) {
     return NextResponse.json({ error: 'Brakujące pola' }, { status: 400 });
@@ -50,6 +57,9 @@ export async function POST(req: NextRequest) {
   if (isNaN(latNum) || latNum < -90 || latNum > 90 || isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
     return NextResponse.json({ error: 'Nieprawidłowe koordynaty (lat: −90…90, lng: −180…180)' }, { status: 400 });
   }
+
+  const numberMatch = /(\d+)\/?$/.exec(qrUrl);
+  const number = numberMatch ? parseInt(numberMatch[1], 10) : null;
 
   type GalleryItem = { url: string; title?: string; alt?: string };
   const galleryItems: GalleryItem[] = (gallery ?? []).filter((g: GalleryItem) => g.url?.trim());
