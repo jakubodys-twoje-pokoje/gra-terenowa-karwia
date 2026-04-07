@@ -6,7 +6,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const isMap = pathname === '/';
   return (
-    <main className={isMap ? 'flex-1 overflow-hidden min-h-0' : 'flex-1 overflow-auto min-h-0 pb-6'}>
+    <main className={isMap ? 'h-dvh overflow-hidden' : 'pb-24 min-h-screen'}>
       {children}
     </main>
   );

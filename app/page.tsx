@@ -372,7 +372,7 @@ export default function MapPage() {
       )}
 
       {/* ── Map controls — full-width row with counter on the left ── */}
-      <div className="absolute bottom-4 inset-x-4 z-[500] flex items-center justify-between">
+      <div className="absolute bottom-20 inset-x-4 z-[500] flex items-center justify-between">
         {/* Discovery counter — left, styled like buttons */}
         {buildings.length > 0 && (
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3.5 py-3 flex items-center gap-2">
