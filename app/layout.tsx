@@ -1,21 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
-import { Kanit, Nunito } from 'next/font/google';
 import './globals.css';
-
-const kanit = Kanit({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-kanit',
-  display: 'swap',
-});
-
-const nunito = Nunito({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-nunito',
-  display: 'swap',
-});
 import Navigation from '@/components/Navigation';
 import PortraitGuard from '@/components/PortraitGuard';
 import ClientWrapper from '@/components/ClientWrapper';
@@ -63,7 +48,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl">
-      <body className={`${kanit.variable} ${nunito.variable} max-w-lg mx-auto relative`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@600;700;800&family=Nunito:wght@400;500;600;700&display=swap" />
+      </head>
+      <body className="max-w-lg mx-auto relative">
         <ClientWrapper>{children}</ClientWrapper>
         <PageTransition />
         <Navigation />

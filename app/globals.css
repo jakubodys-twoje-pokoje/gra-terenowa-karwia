@@ -6,7 +6,7 @@
 
 @layer base {
   html {
-    font-family: var(--font-nunito), system-ui, sans-serif;
+    font-family: 'Nunito', system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
   body {
@@ -15,7 +15,7 @@
     min-height: 100dvh;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-kanit), system-ui, sans-serif;
+    font-family: 'Kanit', system-ui, sans-serif;
   }
 }
 
@@ -39,7 +39,7 @@
 
 /* Leaflet popup typography */
 .leaflet-popup-content {
-  font-family: var(--font-nunito), sans-serif;
+  font-family: 'Nunito', sans-serif;
   font-size: 13px;
 }
 
