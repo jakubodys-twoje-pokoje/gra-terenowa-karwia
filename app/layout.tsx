@@ -48,15 +48,19 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pl" className="h-full">
+    <html lang="pl">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@600;700;800&family=Nunito:wght@400;500;600;700&display=swap" />
       </head>
-      <body className="h-full flex flex-col max-w-lg mx-auto">
-        <ClientWrapper>{children}</ClientWrapper>
-        <Navigation />
+      <body className="max-w-lg mx-auto">
+        {/* App shell — fixed to visible viewport, immune to browser chrome */}
+        <div className="fixed inset-0 flex flex-col max-w-lg mx-auto overflow-hidden">
+          <ClientWrapper>{children}</ClientWrapper>
+          <Navigation />
+        </div>
+        {/* Overlays — outside shell so they cover full screen */}
         <PageTransition />
         <PortraitGuard />
         <Suspense><WelcomeModal /></Suspense>
