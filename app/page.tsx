@@ -349,7 +349,7 @@ export default function MapPage() {
   const isDiscovered = selected ? discoveredIds.has(selected.id) : false;
 
   return (
-    <div className="relative h-full overflow-hidden">
+    <div className="relative h-full overflow-hidden isolate">
       {/* Full-screen map */}
       <MapComponent
         buildings={mapBuildings}

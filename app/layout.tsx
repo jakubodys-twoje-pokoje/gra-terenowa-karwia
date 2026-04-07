@@ -1,6 +1,21 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
+import { Kanit, Nunito } from 'next/font/google';
 import './globals.css';
+
+const kanit = Kanit({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-kanit',
+  display: 'swap',
+});
+
+const nunito = Nunito({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-nunito',
+  display: 'swap',
+});
 import Navigation from '@/components/Navigation';
 import PortraitGuard from '@/components/PortraitGuard';
 import ClientWrapper from '@/components/ClientWrapper';
@@ -48,7 +63,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl">
-      <body className="max-w-lg mx-auto relative">
+      <body className={`${kanit.variable} ${nunito.variable} max-w-lg mx-auto relative`}>
         <ClientWrapper>{children}</ClientWrapper>
         <PageTransition />
         <Navigation />

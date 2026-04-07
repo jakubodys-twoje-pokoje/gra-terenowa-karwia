@@ -18,7 +18,7 @@ export default function Navigation() {
   if (pathname === '/admin') return null;
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-ocean-100 safe-area-pb">
+    <nav className="fixed bottom-0 inset-x-0 z-[900] bg-white border-t border-ocean-100 safe-area-pb">
       <div className="flex items-end justify-around px-2 py-1 max-w-lg mx-auto">
         {navItems.map(({ href, label, Icon, primary }) => {
           const isActive = pathname === href;
