@@ -326,7 +326,14 @@ export default function MapComponent({
       }
     });
 
+    // Invalidate size when container dimensions change (e.g. browser toolbar shows/hides)
+    const ro = new ResizeObserver(() => {
+      if (mapRef.current) mapRef.current.invalidateSize();
+    });
+    if (containerRef.current) ro.observe(containerRef.current);
+
     return () => {
+      ro.disconnect();
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

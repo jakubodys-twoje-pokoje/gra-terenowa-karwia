@@ -21,7 +21,7 @@
 
 @layer utilities {
   .safe-area-pb {
-    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
   }
   .line-clamp-1 {
     overflow: hidden;
