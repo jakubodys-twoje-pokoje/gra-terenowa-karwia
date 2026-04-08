@@ -74,7 +74,7 @@ export default function BuildingCard({
           {number != null ? `${number}. ${name}` : name}
         </h3>
         {discovered ? (
-          <p className="text-gray-500 text-sm mt-1 line-clamp-2">{description}</p>
+          <p className="text-gray-500 text-sm mt-1 line-clamp-2">{description.replace(/<[^>]*>/g, '').trim()}</p>
         ) : (
           <p className="text-gray-400 text-sm mt-1 italic">
             🔍 Znajdź to miejsce i zeskanuj kod QR, by je odkryć.
