@@ -505,9 +505,9 @@ export default function MapPage() {
 
       {/* Instructions modal */}
       {showInstructions && (
-        <div className="absolute inset-0 z-[700] bg-black/60 flex items-end" onClick={closeInstructions}>
+        <div className="fixed inset-0 z-[1000] bg-black/60 flex items-end" onClick={closeInstructions}>
           <div
-            className="w-full bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8"
+            className="w-full bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-[calc(env(safe-area-inset-bottom,0px)+80px)]"
             style={{ animation: 'slideUp 0.3s ease-out' }}
             onClick={(e) => e.stopPropagation()}
           >
