@@ -69,7 +69,7 @@ export default function WelcomeModal() {
       {/* Backdrop */}
       <div
         onClick={dismiss}
-        className="fixed inset-0 z-[800] bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+        className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-sm transition-opacity duration-300"
         style={{ opacity: animateIn ? 1 : 0 }}
       />
 
@@ -77,7 +77,7 @@ export default function WelcomeModal() {
       <div
         className={[
           // mobile: bottom sheet
-          'fixed bottom-0 inset-x-0 z-[801] bg-white rounded-t-[2rem] shadow-2xl',
+          'fixed bottom-0 inset-x-0 z-[1001] bg-white rounded-t-[2rem] shadow-2xl',
           // desktop: centered card
           'md:inset-x-auto md:left-1/2 md:bottom-auto md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[420px] md:rounded-[2rem]',
           // animation

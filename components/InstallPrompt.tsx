@@ -106,14 +106,14 @@ export default function InstallPrompt() {
       {/* Backdrop */}
       <div
         onClick={dismiss}
-        className="fixed inset-0 z-[810] bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+        className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-sm transition-opacity duration-300"
         style={{ opacity: animateIn ? 1 : 0 }}
       />
 
       {/* Sheet */}
       <div
         className={[
-          'fixed bottom-0 inset-x-0 z-[811] bg-white rounded-t-[2rem] shadow-2xl',
+          'fixed bottom-0 inset-x-0 z-[1001] bg-white rounded-t-[2rem] shadow-2xl',
           'md:inset-x-auto md:left-1/2 md:bottom-auto md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[400px] md:rounded-[2rem]',
           'transition-all duration-300 ease-out',
           animateIn
