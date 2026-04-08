@@ -195,7 +195,7 @@ export default function InstallPrompt() {
         </div>
 
         {/* Actions */}
-        <div className="px-5 pt-3 pb-6 space-y-2">
+        <div className="px-5 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+72px)] md:pb-6 space-y-2">
           {platform === 'android' && (
             <button
               onClick={handleInstall}

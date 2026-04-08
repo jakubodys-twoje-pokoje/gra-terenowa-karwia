@@ -117,7 +117,7 @@ export default function WelcomeModal() {
         </div>
 
         {/* Actions */}
-        <div className="px-5 pt-3 pb-5 space-y-2">
+        <div className="px-5 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+72px)] md:pb-5 space-y-2">
           <button
             onClick={goRegister}
             className="w-full bg-ocean-500 hover:bg-ocean-600 text-white py-3 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"
