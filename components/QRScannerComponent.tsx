@@ -167,9 +167,12 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
       )}
 
       {error && (
-        <div className="mt-6 mx-4 max-w-xs space-y-3 z-10">
+        <div className="mt-4 mx-4 max-w-xs space-y-3 z-10">
           <div className="bg-red-500/20 border border-red-400/40 text-red-200 rounded-2xl p-4 text-center text-sm">
             {error}
+            <p className="mt-2 text-red-300/70 text-xs">
+              Sprawdź: Ustawienia Androida → Aplikacje → Vivaldi → Uprawnienia → Kamera
+            </p>
           </div>
           <button
             onClick={startCamera}
@@ -178,20 +181,25 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
             <RefreshCw size={16} />
             Spróbuj ponownie
           </button>
-          <label className="w-full flex items-center justify-center gap-2 bg-ocean-500 hover:bg-ocean-600 text-white rounded-2xl py-3 text-sm font-semibold transition cursor-pointer">
-            <Camera size={16} />
-            Zrób zdjęcie kodu QR
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={handleFileCapture}
-            />
-          </label>
         </div>
       )}
+
+      {/* Always-visible fallback — works without browser camera permission */}
+      <div className="mt-4 mx-4 max-w-xs z-10 pb-[calc(env(safe-area-inset-bottom,0px)+72px)]">
+        <label className="w-full flex items-center justify-center gap-2 bg-ocean-500 hover:bg-ocean-600 text-white rounded-2xl py-3 text-sm font-semibold transition cursor-pointer">
+          <Camera size={16} />
+          Zrób zdjęcie kodu QR
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleFileCapture}
+          />
+        </label>
+        <p className="text-white/30 text-xs text-center mt-2">Otwiera aparat systemowy</p>
+      </div>
     </div>
   );
 }
