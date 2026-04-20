@@ -87,7 +87,7 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[1100] bg-black/90 flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
       {/* Close button */}
       <button
         onClick={onClose}
