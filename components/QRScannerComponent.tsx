@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, Camera } from 'lucide-react';
 
 interface Props {
   onResult: (url: string) => void;
@@ -12,27 +12,21 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
   const [error, setError] = useState('');
   const [started, setStarted] = useState(false);
   const scannerRef = useRef<import('html5-qrcode').Html5Qrcode | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const containerId = 'qr-reader-container';
 
   const startScanner = async () => {
     setError('');
     setStarted(false);
 
-    // First: explicitly request camera permission to trigger the browser dialog
-    let stream: MediaStream | null = null;
+    // Trigger browser permission dialog before html5-qrcode
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    } catch (err: unknown) {
-      const name = (err as { name?: string }).name;
-      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-        setError('Brak dostępu do kamery. Wejdź w ustawienia przeglądarki i zezwól na kamerę dla tej strony.');
-      } else {
-        setError('Nie znaleziono kamery. Sprawdź czy urządzenie ma kamerę tylną.');
-      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      stream.getTracks().forEach(t => t.stop());
+    } catch {
+      setError('Brak dostępu do kamery w przeglądarce.');
       return;
     }
-    // Stop manual stream — html5-qrcode will open its own
-    stream.getTracks().forEach(t => t.stop());
 
     try {
       const { Html5Qrcode } = await import('html5-qrcode');
@@ -40,7 +34,6 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
       const container = document.getElementById(containerId);
       if (!container) return;
 
-      // Clean up any previous instance
       if (scannerRef.current) {
         try { await scannerRef.current.stop(); } catch { /* ignore */ }
         scannerRef.current = null;
@@ -61,15 +54,29 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
       setStarted(true);
     } catch (err) {
       console.error(err);
-      setError('Nie można uruchomić skanera. Spróbuj ponownie.');
+      setError('Nie można uruchomić podglądu kamery.');
     }
+  };
+
+  const handleFileCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      const scanner = new Html5Qrcode('qr-file-scanner');
+      const result = await scanner.scanFile(file, false);
+      onResult(result);
+    } catch {
+      setError('Nie znaleziono kodu QR na zdjęciu. Spróbuj ponownie.');
+    }
+    // reset so same file can be picked again
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   useEffect(() => {
     let cancelled = false;
 
     startScanner().then(() => {
-      // if cancelled before scanner started, stop it
       if (cancelled && scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
         scannerRef.current = null;
@@ -88,7 +95,9 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
-      {/* Close button */}
+      {/* hidden div required by html5-qrcode for file scanning */}
+      <div id="qr-file-scanner" style={{ display: 'none' }} />
+
       <button
         onClick={onClose}
         className="absolute top-4 right-4 p-3 rounded-full bg-white/20 text-white hover:bg-white/30 transition"
@@ -130,6 +139,23 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
             <RefreshCw size={16} />
             Spróbuj ponownie
           </button>
+
+          {/* Fallback: native camera app via file input */}
+          <label className="w-full flex items-center justify-center gap-2 bg-ocean-500 hover:bg-ocean-600 text-white rounded-2xl py-3 text-sm font-semibold transition cursor-pointer">
+            <Camera size={16} />
+            Zrób zdjęcie kodu QR
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileCapture}
+            />
+          </label>
+          <p className="text-white/40 text-xs text-center">
+            Otwiera aparat systemowy — nie wymaga uprawnień przeglądarki
+          </p>
         </div>
       )}
     </div>
