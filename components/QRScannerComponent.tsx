@@ -186,7 +186,8 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
 
       {/* Always-visible fallback — works without browser camera permission */}
       <div className="mt-4 mx-4 max-w-xs z-10 pb-[calc(env(safe-area-inset-bottom,0px)+72px)]">
-        <label className="w-full flex items-center justify-center gap-2 bg-ocean-500 hover:bg-ocean-600 text-white rounded-2xl py-3 text-sm font-semibold transition cursor-pointer">
+        <p className="text-white/40 text-xs text-center mb-2">Nie działa? Użyj aparatu systemowego</p>
+        <label className="w-full flex items-center justify-center gap-2 bg-ocean-500 hover:bg-ocean-600 text-white rounded-2xl px-8 py-3 text-sm font-semibold transition cursor-pointer">
           <Camera size={16} />
           Zrób zdjęcie kodu QR
           <input
@@ -198,7 +199,6 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
             onChange={handleFileCapture}
           />
         </label>
-        <p className="text-white/30 text-xs text-center mt-2">Otwiera aparat systemowy</p>
       </div>
     </div>
   );
