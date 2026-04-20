@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
 
 interface Props {
   onResult: (url: string) => void;
@@ -14,65 +14,80 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
   const scannerRef = useRef<import('html5-qrcode').Html5Qrcode | null>(null);
   const containerId = 'qr-reader-container';
 
-  useEffect(() => {
-    let active = true;
+  const startScanner = async () => {
+    setError('');
+    setStarted(false);
 
-    const startScanner = async () => {
-      try {
-        const { Html5Qrcode } = await import('html5-qrcode');
-
-        if (!active) return;
-
-        const container = document.getElementById(containerId);
-        if (!container) return;
-
-        const scanner = new Html5Qrcode(containerId);
-        scannerRef.current = scanner;
-
-        try {
-          await scanner.start(
-            { facingMode: 'environment' },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText) => {
-              if (active) {
-                onResult(decodedText);
-                try { scanner.stop().catch(() => {}); } catch { /* ignore */ }
-              }
-            },
-            undefined
-          );
-          if (active) setStarted(true);
-        } catch (err) {
-          if (active) {
-            setError('Nie można uruchomić kamery. Sprawdź uprawnienia w przeglądarce.');
-            console.error(err);
-          }
-        }
-      } catch (err) {
-        if (active) {
-          setError('Nie udało się załadować skanera. Spróbuj odświeżyć stronę.');
-          console.error('html5-qrcode load error:', err);
-        }
+    // First: explicitly request camera permission to trigger the browser dialog
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    } catch (err: unknown) {
+      const name = (err as { name?: string }).name;
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setError('Brak dostępu do kamery. Wejdź w ustawienia przeglądarki i zezwól na kamerę dla tej strony.');
+      } else {
+        setError('Nie znaleziono kamery. Sprawdź czy urządzenie ma kamerę tylną.');
       }
-    };
+      return;
+    }
+    // Stop manual stream — html5-qrcode will open its own
+    stream.getTracks().forEach(t => t.stop());
 
-    startScanner();
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      // Clean up any previous instance
+      if (scannerRef.current) {
+        try { await scannerRef.current.stop(); } catch { /* ignore */ }
+        scannerRef.current = null;
+      }
+
+      const scanner = new Html5Qrcode(containerId);
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          onResult(decodedText);
+          try { scanner.stop().catch(() => {}); } catch { /* ignore */ }
+        },
+        undefined
+      );
+      setStarted(true);
+    } catch (err) {
+      console.error(err);
+      setError('Nie można uruchomić skanera. Spróbuj ponownie.');
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    startScanner().then(() => {
+      // if cancelled before scanner started, stop it
+      if (cancelled && scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
+      }
+    });
 
     return () => {
-      active = false;
+      cancelled = true;
       if (scannerRef.current) {
-        try {
-          scannerRef.current.stop().catch(() => {});
-        } catch {
-          // scanner was not running yet
-        }
+        try { scannerRef.current.stop().catch(() => {}); } catch { /* ignore */ }
         scannerRef.current = null;
       }
     };
-  }, [onResult]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-[1100] bg-black/90 flex flex-col items-center justify-center">
       {/* Close button */}
       <button
         onClick={onClose}
@@ -93,7 +108,6 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
           className="w-[300px] h-[300px] overflow-hidden rounded-2xl"
           style={{ background: '#111' }}
         />
-        {/* Corner decorations */}
         <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-ocean-400 rounded-tl-lg" />
         <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-ocean-400 rounded-tr-lg" />
         <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-ocean-400 rounded-bl-lg" />
@@ -105,8 +119,17 @@ export default function QRScannerComponent({ onResult, onClose }: Props) {
       )}
 
       {error && (
-        <div className="mt-6 mx-4 bg-red-500/20 border border-red-400/40 text-red-200 rounded-2xl p-4 text-center text-sm max-w-xs">
-          {error}
+        <div className="mt-6 mx-4 max-w-xs space-y-3">
+          <div className="bg-red-500/20 border border-red-400/40 text-red-200 rounded-2xl p-4 text-center text-sm">
+            {error}
+          </div>
+          <button
+            onClick={startScanner}
+            className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white rounded-2xl py-3 text-sm font-semibold transition"
+          >
+            <RefreshCw size={16} />
+            Spróbuj ponownie
+          </button>
         </div>
       )}
     </div>
