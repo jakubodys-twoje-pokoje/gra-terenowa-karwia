@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle, Tag, Trophy, Egg, Download } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, Images, Users, Building2, CheckCircle, XCircle, Lock, LogOut, MapPin, FileText, Save, Upload, AlertCircle, Tag, Trophy, Egg, Download, BarChart3, QrCode, Eye, UserCheck } from 'lucide-react';
 import clsx from 'clsx';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
@@ -87,7 +87,7 @@ const EMPTY_FORM = {
 export default function AdminPage() {
   const [password, setPassword]     = useState('');
   const [authed, setAuthed]         = useState(false);
-  const [activeTab, setActiveTab]   = useState<'budynki' | 'uzytkownicy' | 'tresci' | 'kategorie' | 'osiagniecia' | 'easter-eggi'>('budynki');
+  const [activeTab, setActiveTab]   = useState<'budynki' | 'uzytkownicy' | 'tresci' | 'kategorie' | 'osiagniecia' | 'easter-eggi' | 'analityka'>('budynki');
   const [contentReg, setContentReg]   = useState('');
   const [contentPol, setContentPol]   = useState('');
   const [contentSaving, setContentSaving] = useState<string | null>(null);
@@ -127,6 +127,26 @@ export default function AdminPage() {
   const [editingEggId, setEditingEggId]     = useState<number | null>(null);
   const [eggForm, setEggForm]               = useState(EMPTY_EGG_FORM);
   const [showEggForm, setShowEggForm]       = useState(false);
+
+  // ── Analytics state ──────────────────────────────────────────────────────────
+  interface AnalyticsData {
+    totals: { discoveries: number; users: number; pageViews: number; scansToday: number; viewsToday: number; activeUsers7: number };
+    series: { discoveries: Record<string,number>; pageViews: Record<string,number>; registrations: Record<string,number> };
+    topBuildings: { buildingId: number; count: number; name: string; number: number|null }[];
+    topPaths: { path: string; count: number }[];
+  }
+  const [analytics, setAnalytics]         = useState<AnalyticsData | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  const fetchAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    try {
+      const res = await fetch('/api/admin/analytics', { headers: { 'x-admin-password': password } });
+      if (res.ok) setAnalytics(await res.json());
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [password]);
 
   // ── CSV import ──────────────────────────────────────────────────────────────
   type CsvStatus = 'pending' | 'importing' | 'ok' | string; // string = error msg
@@ -273,6 +293,10 @@ export default function AdminPage() {
     const stored = sessionStorage.getItem('admin_pass');
     if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); loadContent(); loadCategories(stored); loadAchievements(stored); loadEasterEggs(stored); }
   }, [loadBuildings, loadUsers, loadContent, loadCategories, loadAchievements, loadEasterEggs]);
+
+  useEffect(() => {
+    if (activeTab === 'analityka' && authed && !analytics && !analyticsLoading) fetchAnalytics();
+  }, [activeTab, authed, analytics, analyticsLoading, fetchAnalytics]);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
@@ -549,12 +573,13 @@ export default function AdminPage() {
           {/* Tabs inline in header on desktop */}
           <div className="hidden md:flex bg-gray-100 rounded-xl p-0.5 gap-0.5">
             {([
-              ['budynki',     <Building2 key="b" size={13} />, 'Budynki'],
-              ['uzytkownicy', <Users     key="u" size={13} />, 'Użytkownicy'],
-              ['tresci',      <FileText  key="t" size={13} />, 'Treści'],
-              ['kategorie',   <Tag       key="k" size={13} />, 'Kategorie'],
-              ['osiagniecia', <Trophy    key="o" size={13} />, 'Osiągnięcia'],
-              ['easter-eggi', <Egg       key="e" size={13} />, 'Easter Eggi'],
+              ['budynki',     <Building2  key="b" size={13} />, 'Budynki'],
+              ['uzytkownicy', <Users      key="u" size={13} />, 'Użytkownicy'],
+              ['tresci',      <FileText   key="t" size={13} />, 'Treści'],
+              ['kategorie',   <Tag        key="k" size={13} />, 'Kategorie'],
+              ['osiagniecia', <Trophy     key="o" size={13} />, 'Osiągnięcia'],
+              ['easter-eggi', <Egg        key="e" size={13} />, 'Easter Eggi'],
+              ['analityka',   <BarChart3  key="a" size={13} />, 'Analityka'],
             ] as [string, React.ReactNode, string][]).map(([tab, icon, label]) => (
               <button key={tab} onClick={() => setActiveTab(tab as typeof activeTab)}
                 className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all', activeTab === tab ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
@@ -625,12 +650,13 @@ export default function AdminPage() {
       {/* Mobile tabs – scrollable */}
       <div className="md:hidden flex bg-gray-100 rounded-xl p-0.5 gap-0.5 mx-4 my-3 shrink-0 overflow-x-auto">
         {([
-          ['budynki',     <Building2 key="b" size={12} />, 'Budynki'],
-          ['uzytkownicy', <Users     key="u" size={12} />, 'Użytkownicy'],
-          ['tresci',      <FileText  key="t" size={12} />, 'Treści'],
-          ['kategorie',   <Tag       key="k" size={12} />, 'Kategorie'],
-          ['osiagniecia', <Trophy    key="o" size={12} />, 'Osiągnięcia'],
-          ['easter-eggi', <Egg       key="e" size={12} />, 'Easter Eggi'],
+          ['budynki',     <Building2  key="b" size={12} />, 'Budynki'],
+          ['uzytkownicy', <Users      key="u" size={12} />, 'Użytkownicy'],
+          ['tresci',      <FileText   key="t" size={12} />, 'Treści'],
+          ['kategorie',   <Tag        key="k" size={12} />, 'Kategorie'],
+          ['osiagniecia', <Trophy     key="o" size={12} />, 'Osiągnięcia'],
+          ['easter-eggi', <Egg        key="e" size={12} />, 'Easter Eggi'],
+          ['analityka',   <BarChart3  key="a" size={12} />, 'Analityka'],
         ] as [string, React.ReactNode, string][]).map(([tab, icon, label]) => (
           <button key={tab} onClick={() => setActiveTab(tab as typeof activeTab)}
             className={clsx('flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold transition-all', activeTab === tab ? 'bg-white text-ocean-600 shadow-sm' : 'text-gray-400')}>
@@ -1293,6 +1319,131 @@ export default function AdminPage() {
                   <div className="text-center py-10 text-gray-400 text-sm">Brak easter eggów — kliknij &quot;Dodaj easter egg&quot;</div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* ── ANALITYKA ── */}
+          {activeTab === 'analityka' && (
+            <div className="px-4 py-4 space-y-4">
+              {analyticsLoading && (
+                <div className="flex justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-ocean-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              {!analyticsLoading && analytics && (() => {
+                const { totals, series, topBuildings, topPaths } = analytics;
+
+                function BarChart({ data, color }: { data: Record<string,number>; color: string }) {
+                  const entries = Object.entries(data);
+                  const max = Math.max(...entries.map(([,v]) => v), 1);
+                  const H = 64;
+                  return (
+                    <svg viewBox={`0 0 ${entries.length * 9} ${H + 14}`} className="w-full" preserveAspectRatio="none" style={{ height: 80 }}>
+                      {entries.map(([date, val], i) => {
+                        const h = Math.round((val / max) * H);
+                        const x = i * 9;
+                        const isMonday = new Date(date).getDay() === 1;
+                        return (
+                          <g key={date}>
+                            <rect x={x + 1} y={H - h} width={7} height={h} fill={color} rx={1.5} opacity={0.85} />
+                            {isMonday && <line x1={x} y1={0} x2={x} y2={H} stroke="#e5e7eb" strokeWidth={0.5} />}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  );
+                }
+
+                return (
+                  <>
+                    {/* Metric cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        { icon: <QrCode size={18} className="text-ocean-500"/>, label: 'Skanowania łącznie', value: totals.discoveries },
+                        { icon: <QrCode size={18} className="text-green-500"/>, label: 'Skanowania dziś', value: totals.scansToday },
+                        { icon: <Eye size={18} className="text-purple-500"/>, label: 'Odsłony dziś', value: totals.viewsToday },
+                        { icon: <Users size={18} className="text-ocean-500"/>, label: 'Użytkownicy łącznie', value: totals.users },
+                        { icon: <UserCheck size={18} className="text-green-500"/>, label: 'Aktywni (7 dni)', value: totals.activeUsers7 },
+                        { icon: <Eye size={18} className="text-gray-400"/>, label: 'Odsłony łącznie', value: totals.pageViews },
+                      ].map(({ icon, label, value }) => (
+                        <div key={label} className="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">{icon}</div>
+                          <div>
+                            <p className="text-2xl font-extrabold text-ocean-900 leading-none">{value.toLocaleString('pl-PL')}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Charts */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white rounded-2xl shadow-sm p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-bold text-ocean-900">Skanowania — ostatnie 30 dni</p>
+                          <button onClick={fetchAnalytics} className="text-xs text-ocean-400 hover:text-ocean-600">Odśwież</button>
+                        </div>
+                        <BarChart data={series.discoveries} color="#0F5F92" />
+                        <p className="text-xs text-gray-400 mt-1 text-right">Pionowe linie = poniedziałki</p>
+                      </div>
+                      <div className="bg-white rounded-2xl shadow-sm p-4">
+                        <p className="text-sm font-bold text-ocean-900 mb-3">Odsłony stron — ostatnie 30 dni</p>
+                        <BarChart data={series.pageViews} color="#8b5cf6" />
+                      </div>
+                      <div className="bg-white rounded-2xl shadow-sm p-4">
+                        <p className="text-sm font-bold text-ocean-900 mb-3">Rejestracje — ostatnie 30 dni</p>
+                        <BarChart data={series.registrations} color="#10b981" />
+                      </div>
+                    </div>
+
+                    {/* Top buildings */}
+                    <div className="bg-white rounded-2xl shadow-sm p-4">
+                      <p className="text-sm font-bold text-ocean-900 mb-3">Top 10 najczęściej skanowanych budynków</p>
+                      <div className="space-y-2">
+                        {topBuildings.map((b, i) => {
+                          const pct = Math.round((b.count / (topBuildings[0]?.count || 1)) * 100);
+                          return (
+                            <div key={b.buildingId} className="flex items-center gap-3">
+                              <span className="w-5 text-xs font-bold text-gray-400 text-right shrink-0">{i + 1}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-ocean-800 truncate">
+                                  {b.number != null ? `${b.number}. ` : ''}{b.name}
+                                </p>
+                                <div className="mt-0.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-ocean-400 rounded-full" style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                              <span className="text-xs font-bold text-ocean-600 shrink-0">{b.count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Top pages */}
+                    <div className="bg-white rounded-2xl shadow-sm p-4">
+                      <p className="text-sm font-bold text-ocean-900 mb-3">Top 10 stron (ostatnie 30 dni)</p>
+                      <div className="space-y-2">
+                        {topPaths.map((p, i) => {
+                          const pct = Math.round((p.count / (topPaths[0]?.count || 1)) * 100);
+                          return (
+                            <div key={p.path} className="flex items-center gap-3">
+                              <span className="w-5 text-xs font-bold text-gray-400 text-right shrink-0">{i + 1}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-mono text-gray-600 truncate">{p.path}</p>
+                                <div className="mt-0.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-purple-400 rounded-full" style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                              <span className="text-xs font-bold text-purple-600 shrink-0">{p.count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
 

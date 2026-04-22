@@ -128,3 +128,15 @@ model EmailVerificationToken {
 
   @@index([userId])
 }
+
+model PageView {
+  id        Int      @id @default(autoincrement())
+  path      String   // e.g. "/", "/baza", "/budynek/5"
+  userId    String?  // guest UUID or registered userId (optional)
+  sessionId String   // random per-session UUID (localStorage)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path])
+  @@index([sessionId])
+}
