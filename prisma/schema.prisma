@@ -59,7 +59,11 @@ model UserProfile {
   avatarUrl     String?
   passwordHash  String?
   emailVerified Boolean  @default(false)
-  guestUserId   String?  // localStorage UUID at registration — used to migrate guest discoveries
+  guestUserId   String?
+  showOnMap     Boolean  @default(false)
+  lastLat       Float?
+  lastLng       Float?
+  lastSeenAt    DateTime?
   registeredAt  DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

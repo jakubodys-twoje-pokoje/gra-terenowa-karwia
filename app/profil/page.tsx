@@ -199,10 +199,11 @@ function UnverifiedView({ email }: { email: string }) {
 }
 
 // ── VERIFIED VIEW ─────────────────────────────────────────────────────────────
-function VerifiedView({ user, onLogout }: { user: { email: string; nickname: string | null; city: string | null; avatarUrl: string | null }, onLogout: () => void }) {
+function VerifiedView({ user, onLogout }: { user: { email: string; nickname: string | null; city: string | null; avatarUrl: string | null; showOnMap: boolean }, onLogout: () => void }) {
   const router = useRouter();
   const [form, setForm] = useState({ nickname: user.nickname ?? '', city: user.city ?? '' });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl ?? null);
+  const [showOnMap, setShowOnMap] = useState(user.showOnMap);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null); // null = not uploading
   const [uploadError, setUploadError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -321,7 +322,7 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
     await fetch('/api/profil', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, avatarUrl }),
+      body: JSON.stringify({ ...form, avatarUrl, showOnMap }),
     });
     setSaving(false);
     setSaved(true);
@@ -468,6 +469,21 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
             value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
             className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400" />
         </div>
+        {/* showOnMap toggle */}
+        <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-ocean-900">Pokaż mnie na mapie</p>
+            <p className="text-xs text-gray-400 mt-0.5">Inni gracze zobaczą Twój avatar w czasie rzeczywistym</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowOnMap(v => !v)}
+            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ml-4 ${showOnMap ? 'bg-ocean-500' : 'bg-gray-200'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showOnMap ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
+
         <button type="submit" disabled={saving}
           className="w-full flex items-center justify-center gap-2 bg-ocean-500 text-white py-3.5 rounded-2xl font-bold text-sm shadow-lg shadow-ocean-500/30 disabled:opacity-60">
           {saved ? <><Check size={16} /> Zapisano!</> : saving ? 'Zapisuję…' : <><Save size={16} /> Zapisz profil</>}

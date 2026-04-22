@@ -18,7 +18,7 @@ export async function PUT(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { nickname, city, avatarUrl } = body;
+  const { nickname, city, avatarUrl, showOnMap } = body;
 
   if (nickname !== undefined && nickname !== null) {
     const trimmed = String(nickname).trim();
@@ -38,7 +38,12 @@ export async function PUT(req: NextRequest) {
   // Only allow updating own profile; email cannot be changed here
   const profile = await prisma.userProfile.update({
     where: { userId: session.userId },
-    data: { nickname, city, avatarUrl },
+    data: {
+      ...(nickname !== undefined && { nickname }),
+      ...(city !== undefined && { city }),
+      ...(avatarUrl !== undefined && { avatarUrl }),
+      ...(typeof showOnMap === 'boolean' && { showOnMap }),
+    },
   });
   return NextResponse.json(profile);
 }

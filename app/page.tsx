@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { QrCode, MapPin, ChevronDown, ExternalLink, Navigation, Crosshair, HelpCircle, X } from 'lucide-react';
-import type { MapBuilding, MapHandle } from '@/components/MapComponent';
+import type { MapBuilding, MapHandle, MapPlayer } from '@/components/MapComponent';
 import { useAuth } from '@/lib/useAuth';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
@@ -146,6 +146,7 @@ export default function MapPage() {
   const [showInstructions, setShowInstructions] = useState(false);
   const [activeTip, setActiveTip]         = useState<{ text: string; icon: string } | null>(null);
   const [leaderNickname, setLeaderNickname] = useState<string | null>(null);
+  const [players, setPlayers] = useState<MapPlayer[]>([]);
   const sheetRef       = useRef<HTMLDivElement>(null);
   const mapHandle      = useRef<MapHandle | null>(null);
   const userPosRef     = useRef<[number, number] | null>(null);
@@ -165,6 +166,31 @@ export default function MapPage() {
       if (tipTimerRef.current !== null) clearTimeout(tipTimerRef.current);
     };
   }, []);
+
+  // Poll other players every 30s
+  useEffect(() => {
+    const poll = () => fetch('/api/gracze').then(r => r.ok ? r.json() : []).then(setPlayers).catch(() => {});
+    poll();
+    const id = setInterval(poll, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Send own position every 30s when showOnMap is enabled
+  useEffect(() => {
+    if (!user?.showOnMap) return;
+    const send = () => {
+      if (!userPosRef.current) return;
+      const [lat, lng] = userPosRef.current;
+      fetch('/api/lokalizacja', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lng }) }).catch(() => {});
+    };
+    send();
+    const id = setInterval(send, 30_000);
+    return () => {
+      clearInterval(id);
+      // Clear location when leaving map or disabling
+      fetch('/api/lokalizacja', { method: 'DELETE' }).catch(() => {});
+    };
+  }, [user?.showOnMap]);
 
   const load = useCallback(async () => {
     const userId = user?.userId ?? getUserId();
@@ -353,6 +379,7 @@ export default function MapPage() {
       {/* Full-screen map */}
       <MapComponent
         buildings={mapBuildings}
+        players={players.filter(p => p.userId !== user?.userId)}
         height="100%"
         zoom={19}
         showUserLocation

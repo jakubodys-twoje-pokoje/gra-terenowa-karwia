@@ -13,6 +13,14 @@ export interface MapBuilding {
   outlineImageUrl?: string | null;
 }
 
+export interface MapPlayer {
+  userId: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+  lastLat: number;
+  lastLng: number;
+}
+
 export interface MapHandle {
   panTo: (lat: number, lng: number, zoom?: number) => void;
   openBuilding: (id: number) => void;
@@ -22,19 +30,16 @@ export interface MapHandle {
 
 interface Props {
   buildings: MapBuilding[];
+  players?: MapPlayer[];
   center?: [number, number];
   zoom?: number;
   onBuildingClick?: (id: number) => void;
   onMapClick?: (lat: number, lng: number) => void;
   height?: string;
   showUserLocation?: boolean;
-  /** When false, disables all user interactions (static thumbnail mode) */
   interactive?: boolean;
-  /** User's avatar URL — shown on the location dot; null/undefined = blue placeholder */
   userAvatarUrl?: string | null;
-  /** Called once the Leaflet map is ready — gives caller an imperative handle */
   onMapReady?: (handle: MapHandle) => void;
-  /** Called on every GPS position update (only when showUserLocation=true) */
   onUserLocation?: (lat: number, lng: number) => void;
 }
 
@@ -138,6 +143,7 @@ function makeIcon(L: any, b: MapBuilding, scale: number) {
 
 export default function MapComponent({
   buildings,
+  players = [],
   center = KARWIA_CENTER,
   zoom = 17,
   onBuildingClick,
@@ -163,16 +169,60 @@ export default function MapComponent({
   const buildingsRef        = useRef(buildings);
   // Always reflects the latest onBuildingClick, used inside marker handlers
   const onBuildingClickRef  = useRef(onBuildingClick);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const playerMarkersRef    = useRef<Map<string, any>>(new Map());
+  const playersRef          = useRef(players);
 
   // Keep refs in sync with props
   useEffect(() => { buildingsRef.current = buildings; }, [buildings]);
   useEffect(() => { onBuildingClickRef.current = onBuildingClick; }, [onBuildingClick]);
+  useEffect(() => { playersRef.current = players; }, [players]);
 
   // Re-add building markers whenever the buildings array changes (covers the case where
   // the Leaflet chunk was already cached and the effect ran before the API responded)
   useEffect(() => {
     addMarkersRef.current?.(buildings);
   }, [buildings]);
+
+  // Update player markers whenever players array changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    import('leaflet').then((L) => {
+      const seen = new Set<string>();
+
+      for (const p of players) {
+        seen.add(p.userId);
+        const initials = (p.nickname ?? '?').slice(0, 2).toUpperCase();
+        const avatar = p.avatarUrl && !p.avatarUrl.startsWith('blob:') ? p.avatarUrl : null;
+        const html = `<div style="
+          width:32px;height:32px;border-radius:6px;overflow:hidden;
+          border:2.5px solid #22c55e;background:#fff;
+          box-shadow:0 2px 8px rgba(0,0,0,0.35);
+          display:flex;align-items:center;justify-content:center;
+          font-size:12px;font-weight:700;color:#15803d;
+        ">${avatar
+          ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;display:block;" />`
+          : initials
+        }</div>`;
+        const icon = L.divIcon({ html, className: '', iconSize: [32, 32], iconAnchor: [16, 16] });
+
+        if (playerMarkersRef.current.has(p.userId)) {
+          const m = playerMarkersRef.current.get(p.userId);
+          m.setLatLng([p.lastLat, p.lastLng]);
+          m.setIcon(icon);
+        } else {
+          const m = L.marker([p.lastLat, p.lastLng], { icon, zIndexOffset: 50 }).addTo(map);
+          playerMarkersRef.current.set(p.userId, m);
+        }
+      }
+
+      // Remove stale markers
+      for (const [uid, m] of playerMarkersRef.current.entries()) {
+        if (!seen.has(uid)) { m.remove(); playerMarkersRef.current.delete(uid); }
+      }
+    });
+  }, [players]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
