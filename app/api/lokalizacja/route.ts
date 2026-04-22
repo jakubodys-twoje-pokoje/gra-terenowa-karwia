@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
-  const session = await getSession(req);
+  const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { lat, lng } = await req.json();
@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
 }
 
 // Turn off location sharing (called on page unload / toggle off)
-export async function DELETE(req: NextRequest) {
-  const session = await getSession(req);
+export async function DELETE(_req: NextRequest) {
+  const session = await getSession();
   if (!session) return NextResponse.json({ ok: true });
 
   await prisma.userProfile.update({
