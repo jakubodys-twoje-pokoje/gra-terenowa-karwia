@@ -218,9 +218,9 @@ export default function MapComponent({
       }
 
       // Remove stale markers
-      for (const [uid, m] of playerMarkersRef.current.entries()) {
+      Array.from(playerMarkersRef.current.entries()).forEach(([uid, m]) => {
         if (!seen.has(uid)) { m.remove(); playerMarkersRef.current.delete(uid); }
-      }
+      });
     });
   }, [players]);
 
