@@ -294,9 +294,13 @@ export default function AdminPage() {
     if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); loadContent(); loadCategories(stored); loadAchievements(stored); loadEasterEggs(stored); }
   }, [loadBuildings, loadUsers, loadContent, loadCategories, loadAchievements, loadEasterEggs]);
 
+  const analyticsFetchedRef = useRef(false);
   useEffect(() => {
-    if (activeTab === 'analityka' && authed && !analytics && !analyticsLoading) fetchAnalytics();
-  }, [activeTab, authed, analytics, analyticsLoading, fetchAnalytics]);
+    if (activeTab === 'analityka' && authed && !analyticsFetchedRef.current) {
+      analyticsFetchedRef.current = true;
+      fetchAnalytics();
+    }
+  }, [activeTab, authed, fetchAnalytics]);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
