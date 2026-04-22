@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
-import Database from 'better-sqlite3';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const Database = require('better-sqlite3') as new (path: string) => { exec(sql: string): void; close(): void };
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
