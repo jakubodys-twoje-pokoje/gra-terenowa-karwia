@@ -17,12 +17,18 @@ function dbPath() {
 // Additive startup migrations — safe to run on every cold start
 function runStartupMigrations(path: string) {
   const db = new Database(path);
+  // Check if schema exists before attempting additive migrations
+  const tables = new Set(
+    db.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all().map((r: { name: string }) => r.name)
+  );
   // Add location-sharing columns to UserProfile if missing
-  const cols = new Set(db.prepare('PRAGMA table_info(UserProfile)').all().map(c => c.name));
-  if (!cols.has('showOnMap'))   db.exec(`ALTER TABLE "UserProfile" ADD COLUMN "showOnMap"   INTEGER NOT NULL DEFAULT 0`);
-  if (!cols.has('lastLat'))     db.exec(`ALTER TABLE "UserProfile" ADD COLUMN "lastLat"     REAL`);
-  if (!cols.has('lastLng'))     db.exec(`ALTER TABLE "UserProfile" ADD COLUMN "lastLng"     REAL`);
-  if (!cols.has('lastSeenAt'))  db.exec(`ALTER TABLE "UserProfile" ADD COLUMN "lastSeenAt"  DATETIME`);
+  if (tables.has('UserProfile')) {
+    const cols = new Set(db.prepare('PRAGMA table_info(UserProfile)').all().map(c => c.name));
+    if (!cols.has('showOnMap'))   db.exec(`ALTER TABLE "UserProfile" ADD COLUMN "showOnMap"   INTEGER NOT NULL DEFAULT 0`);
+    if (!cols.has('lastLat'))     db.exec(`ALTER TABLE "UserProfile" ADD COLUMN "lastLat"     REAL`);
+    if (!cols.has('lastLng'))     db.exec(`ALTER TABLE "UserProfile" ADD COLUMN "lastLng"     REAL`);
+    if (!cols.has('lastSeenAt'))  db.exec(`ALTER TABLE "UserProfile" ADD COLUMN "lastSeenAt"  DATETIME`);
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS "PageView" (
