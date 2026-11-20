@@ -2,13 +2,13 @@ import type { Metadata } from 'next';
 import { prisma } from '@/lib/db';
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
   children: React.ReactNode;
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const building = await prisma.building.findUnique({
-    where: { id: Number(params.id) },
+    where: { id: Number((await params).id) },
     select: { name: true, description: true, imageUrl: true },
   });
 

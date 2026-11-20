@@ -25,3 +25,8 @@ yarn-error.log*
 # Vercel
 .vercel
 tsconfig.tsbuildinfo
+
+# Runtime data
+prisma/*.db
+prisma/*.db-*
+public/uploads/

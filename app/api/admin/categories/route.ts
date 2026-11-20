@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { isAdmin, unauthorized } from '@/lib/adminAuth';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
-function isAdmin(req: NextRequest) {
-  return req.headers.get('x-admin-password') === ADMIN_PASSWORD;
-}
 
 const DEFAULT_CATEGORIES = [
   { value: 'beach',      label: '🏖️ Plaża',     icon: '🏖️', order: 0 },
@@ -16,7 +13,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAdmin(req)) return unauthorized();
 
   let categories = await prisma.category.findMany({ orderBy: { order: 'asc' } });
 
@@ -29,7 +26,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAdmin(req)) return unauthorized();
 
   const { value, label, icon, order } = await req.json();
   if (!value || !label) return NextResponse.json({ error: 'value i label są wymagane' }, { status: 400 });

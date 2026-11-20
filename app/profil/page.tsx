@@ -256,10 +256,8 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
     const preview = URL.createObjectURL(file);
     setAvatarUrl(preview);
     setUploadProgress(0);
-    const userId = getUserId();
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('userId', userId);
 
     const xhr = new XMLHttpRequest();
     xhr.upload.onprogress = (ev) => {
@@ -319,12 +317,20 @@ function VerifiedView({ user, onLogout }: { user: { email: string; nickname: str
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await fetch('/api/profil', {
+    setUploadError('');
+    // The avatar is persisted at upload time; the local preview may be a data: URL, so it is not sent here.
+    const res = await fetch('/api/profil', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, avatarUrl, showOnMap }),
-    });
+      body: JSON.stringify({ ...form, showOnMap }),
+    }).catch(() => null);
     setSaving(false);
+    if (!res?.ok) {
+      const d = await res?.json().catch(() => ({}));
+      setUploadError(d?.error ?? 'Nie udało się zapisać profilu — spróbuj ponownie');
+      return;
+    }
+    await fetchMe();
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };

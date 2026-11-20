@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { isAdmin, unauthorized } from '@/lib/adminAuth';
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const id = Number((await params).id);
   try {
     const building = await prisma.building.findUnique({
-      where: { id: Number(params.id) },
+      where: { id },
       include: { images: { orderBy: { order: 'asc' } } },
     });
-    if (!building) return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
+    if (!building || (!building.published && !isAdmin(req))) return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
     return NextResponse.json(building);
   } catch {
     // Fallback without images
     const building = await prisma.building.findUnique({
-      where: { id: Number(params.id) },
+      where: { id },
     });
-    if (!building) return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
+    if (!building || (!building.published && !isAdmin(req))) return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
     return NextResponse.json({ ...building, images: [] });
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const password = req.headers.get('x-admin-password');
-  if (password !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const id = Number((await params).id);
+  if (!isAdmin(req)) return unauthorized();
 
   const body = await req.json();
   const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;
@@ -47,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   try {
     const building = await prisma.building.update({
-      where: { id: Number(params.id) },
+      where: { id },
       data: {
         ...(number !== undefined && { number }),
         ...(name && { name }),
@@ -83,12 +83,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const password = req.headers.get('x-admin-password');
-  if (password !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const id = Number((await params).id);
+  if (!isAdmin(req)) return unauthorized();
 
-  await prisma.building.delete({ where: { id: Number(params.id) } });
+  await prisma.building.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

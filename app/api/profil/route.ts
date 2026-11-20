@@ -7,7 +7,10 @@ export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId');
   if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
 
-  const profile = await prisma.userProfile.findUnique({ where: { userId } });
+  const profile = await prisma.userProfile.findUnique({
+    where: { userId },
+    select: { userId: true, nickname: true, city: true, avatarUrl: true },
+  });
   if (!profile) return NextResponse.json(null);
   return NextResponse.json(profile);
 }
@@ -27,16 +30,16 @@ export async function PUT(req: NextRequest) {
   if (containsProfanity(nickname)) return NextResponse.json({ error: 'Pseudonim zawiera niedozwolone słowa.' }, { status: 400 });
   if (containsProfanity(city)) return NextResponse.json({ error: 'Miejscowość zawiera niedozwolone słowa.' }, { status: 400 });
 
-  // Reject dangerous avatar URL protocols (javascript:, data:, etc.)
-  if (avatarUrl && typeof avatarUrl === 'string') {
-    const proto = avatarUrl.trim().toLowerCase();
-    if (proto.startsWith('javascript:') || proto.startsWith('data:') || proto.startsWith('vbscript:')) {
-      return NextResponse.json({ error: 'Nieprawidłowy URL avatara.' }, { status: 400 });
-    }
+  if (city != null && String(city).length > 60) return NextResponse.json({ error: 'Miejscowość może mieć maksymalnie 60 znaków.' }, { status: 400 });
+
+  // Avatars only ever come from our own upload endpoint
+  if (avatarUrl != null && !(typeof avatarUrl === 'string' && /^\/api\/avatars\/[\w.-]+$/.test(avatarUrl))) {
+    return NextResponse.json({ error: 'Nieprawidłowy URL avatara.' }, { status: 400 });
   }
 
   // Only allow updating own profile; email cannot be changed here
   const profile = await prisma.userProfile.update({
+    select: { userId: true, email: true, nickname: true, city: true, avatarUrl: true, emailVerified: true, showOnMap: true },
     where: { userId: session.userId },
     data: {
       ...(nickname !== undefined && { nickname }),

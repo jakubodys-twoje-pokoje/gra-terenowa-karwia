@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { isAdmin, unauthorized } from '@/lib/adminAuth';
 
 export async function GET(req: NextRequest) {
-  const isAdmin = req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD;
-  const where = isAdmin ? {} : { published: true };
+  const where = isAdmin(req) ? {} : { published: true };
 
   try {
     const buildings = await prisma.building.findMany({
@@ -40,10 +40,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const password = req.headers.get('x-admin-password');
-  if (password !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAdmin(req)) return unauthorized();
 
   const body = await req.json();
   const { name, description, address, lat, lng, imageUrl, outlineImageUrl, qrUrl, category, gallery, hidden, published } = body;

@@ -30,7 +30,7 @@ export async function fetchMe(): Promise<AuthUser | null> {
 export async function logout() {
   await fetch('/api/auth/logout', { method: 'POST' });
   // Update localStorage so getUserId() picks up a fresh guest id
-  localStorage.removeItem('karwia_session_user_id');
+  localStorage.removeItem('karwia_user_id');
   notify(null);
 }
 

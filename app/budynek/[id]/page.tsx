@@ -4,10 +4,10 @@ import { prisma } from '@/lib/db';
 import BudynekPageClient from './BudynekPageClient';
 
 export async function generateMetadata(
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<Metadata> {
   const building = await prisma.building.findUnique({
-    where: { id: Number(params.id) },
+    where: { id: Number((await params).id) },
     select: { name: true, description: true, imageUrl: true },
   });
 

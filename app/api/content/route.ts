@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { isAdmin, unauthorized } from '@/lib/adminAuth';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 
 // GET /api/content?key=regulamin
 export async function GET(req: NextRequest) {
@@ -14,9 +14,7 @@ export async function GET(req: NextRequest) {
 
 // PUT /api/content?key=regulamin  (admin only)
 export async function PUT(req: NextRequest) {
-  const adminPwd = req.headers.get('x-admin-password');
-  if (adminPwd !== ADMIN_PASSWORD)
-    return NextResponse.json({ error: 'Brak dostępu' }, { status: 401 });
+  if (!isAdmin(req)) return unauthorized();
 
   const key = req.nextUrl.searchParams.get('key');
   if (!key) return NextResponse.json({ error: 'Brak klucza' }, { status: 400 });

@@ -1,9 +1,14 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? 'karwia-secret-change-in-production-32chars'
-);
+// Resolved lazily so `next build` works without the secret, but production never signs with a known default.
+function secret(): Uint8Array {
+  const value = process.env.JWT_SECRET;
+  if (!value && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is not set — add it to .env and restart');
+  }
+  return new TextEncoder().encode(value ?? 'karwia-dev-only-secret-not-for-production');
+}
 const COOKIE = 'karwia_session';
 
 export interface SessionPayload {
@@ -16,12 +21,12 @@ export async function signSession(payload: SessionPayload): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('90d')
-    .sign(SECRET);
+    .sign(secret());
 }
 
 export async function verifySession(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, secret());
     return payload as unknown as SessionPayload;
   } catch {
     return null;

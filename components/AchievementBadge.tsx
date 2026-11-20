@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import clsx from 'clsx';
-import { X, Share2, Facebook } from 'lucide-react';
+import { X, Share2 } from 'lucide-react';
 
 interface Props {
   icon: string;
@@ -128,7 +128,7 @@ export default function AchievementBadge({ icon, name, description, color, unloc
                 }}
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm bg-[#1877F2] text-white transition"
               >
-                <Facebook size={16} />
+                <Share2 size={16} />
                 Udostępnij na Facebooku
               </button>
             </div>

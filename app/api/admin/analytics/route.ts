@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { isAdmin, unauthorized } from '@/lib/adminAuth';
 
-function unauthorized() {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-}
 
 function startOfDay(daysAgo: number): Date {
   const d = new Date();
@@ -26,8 +24,7 @@ function emptyDayMap(days: number): Record<string, number> {
 }
 
 export async function GET(req: NextRequest) {
-  const password = req.headers.get('x-admin-password');
-  if (password !== process.env.ADMIN_PASSWORD) return unauthorized();
+  if (!isAdmin(req)) return unauthorized();
 
   const DAYS = 30;
   const since30 = startOfDay(DAYS);

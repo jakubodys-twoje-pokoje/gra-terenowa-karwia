@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { isAdmin, unauthorized } from '@/lib/adminAuth';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
-function isAdmin(req: NextRequest) {
-  return req.headers.get('x-admin-password') === ADMIN_PASSWORD;
-}
 
 const DEFAULT_ACHIEVEMENTS = [
   { name: 'Pierwszy krok',         description: 'Zeskanuj swój pierwszy budynek w Karwi',          icon: '👣', color: '#2A8EC9', conditionType: 'total_count',    conditionValue: 1,  conditionCategory: null,     order: 0 },
@@ -18,7 +15,7 @@ const DEFAULT_ACHIEVEMENTS = [
 ];
 
 export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAdmin(req)) return unauthorized();
 
   let achievements = await prisma.achievement.findMany({ orderBy: { order: 'asc' } });
 
@@ -31,7 +28,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAdmin(req)) return unauthorized();
 
   const { name, description, icon, color, conditionType, conditionValue, conditionCategory, buildingIds, order } = await req.json();
   if (!name || !conditionType) return NextResponse.json({ error: 'name i conditionType są wymagane' }, { status: 400 });

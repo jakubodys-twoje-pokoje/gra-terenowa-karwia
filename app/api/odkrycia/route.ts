@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 /** GET /api/odkrycia?userId=xxx  – returns all discoveries for a user */
 export async function GET(req: NextRequest) {
@@ -27,6 +28,14 @@ export async function POST(req: NextRequest) {
   const { userId, buildingId } = await req.json();
   if (!userId || !buildingId) {
     return NextResponse.json({ error: 'Brak userId lub buildingId' }, { status: 400 });
+  }
+
+  if (typeof userId !== 'string' || userId.length > 64) {
+    return NextResponse.json({ error: 'Nieprawidłowy userId' }, { status: 400 });
+  }
+  const owner = await prisma.userProfile.findUnique({ where: { userId }, select: { userId: true } });
+  if (owner && (await getSession())?.userId !== userId) {
+    return NextResponse.json({ error: 'Sesja wygasła — zaloguj się ponownie' }, { status: 401 });
   }
 
   const building = await prisma.building.findUnique({

@@ -78,7 +78,7 @@ async function fetchWpTitle(imageUrl: string): Promise<{ title: string; alt: str
 
 const EMPTY_FORM = {
   name: '', description: '', address: '',
-  lat: '54.7505', lng: '17.8670',
+  lat: '54.8287', lng: '18.2101',
   imageUrl: '', outlineImageUrl: '', qrUrl: '', category: 'historia',
   hidden: false, published: true,
 };
@@ -87,6 +87,8 @@ const EMPTY_FORM = {
 export default function AdminPage() {
   const [password, setPassword]     = useState('');
   const [authed, setAuthed]         = useState(false);
+  const [authError, setAuthError]   = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
   const [activeTab, setActiveTab]   = useState<'budynki' | 'uzytkownicy' | 'tresci' | 'kategorie' | 'osiagniecia' | 'easter-eggi' | 'analityka'>('budynki');
   const [contentReg, setContentReg]   = useState('');
   const [contentPol, setContentPol]   = useState('');
@@ -141,7 +143,7 @@ export default function AdminPage() {
   const fetchAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
     try {
-      const res = await fetch('/api/admin/analytics', { headers: { 'x-admin-password': password } });
+      const res = await fetch('/api/admin/analytics', { headers: { 'x-admin-password': encodeURIComponent(password) } });
       if (res.ok) setAnalytics(await res.json());
     } finally {
       setAnalyticsLoading(false);
@@ -231,7 +233,7 @@ export default function AdminPage() {
       setCsvRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'importing' } : r));
       const row = csvRows[i];
       const body = { name: row.name, description: row.description, address: row.address, lat: parseFloat(row.lat), lng: parseFloat(row.lng), imageUrl: row.imageUrl || null, outlineImageUrl: row.outlineImageUrl || null, qrUrl: row.qrUrl, category: row.category, hidden: row.hidden, published: row.published, gallery: row.gallery };
-      const res = await fetch('/api/budynki', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
+      const res = await fetch('/api/budynki', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) }, body: JSON.stringify(body) });
       const msg = res.ok ? 'ok' : ((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
       setCsvRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: msg } : r));
     }
@@ -241,28 +243,28 @@ export default function AdminPage() {
 
   const loadBuildings = useCallback(async (pwd: string) => {
     setLoading(true);
-    const res = await fetch('/api/budynki', { headers: { 'x-admin-password': pwd } });
+    const res = await fetch('/api/budynki', { headers: { 'x-admin-password': encodeURIComponent(pwd) } });
     if (res.ok) setBuildings(await res.json());
     setLoading(false);
   }, []);
 
   const loadUsers = useCallback(async (pwd: string) => {
-    const res = await fetch('/api/admin/users', { headers: { 'x-admin-password': pwd } });
+    const res = await fetch('/api/admin/users', { headers: { 'x-admin-password': encodeURIComponent(pwd) } });
     if (res.ok) { const d = await res.json(); setUsers(d.users); setGuestCount(d.guestCount); }
   }, []);
 
   const loadCategories = useCallback(async (pwd: string) => {
-    const res = await fetch('/api/admin/categories', { headers: { 'x-admin-password': pwd } });
+    const res = await fetch('/api/admin/categories', { headers: { 'x-admin-password': encodeURIComponent(pwd) } });
     if (res.ok) setCategories(await res.json());
   }, []);
 
   const loadAchievements = useCallback(async (pwd: string) => {
-    const res = await fetch('/api/admin/achievements', { headers: { 'x-admin-password': pwd } });
+    const res = await fetch('/api/admin/achievements', { headers: { 'x-admin-password': encodeURIComponent(pwd) } });
     if (res.ok) setAchievements(await res.json());
   }, []);
 
   const loadEasterEggs = useCallback(async (pwd: string) => {
-    const res = await fetch('/api/admin/easter-eggs', { headers: { 'x-admin-password': pwd } });
+    const res = await fetch('/api/admin/easter-eggs', { headers: { 'x-admin-password': encodeURIComponent(pwd) } });
     if (res.ok) setEasterEggs(await res.json());
   }, []);
 
@@ -279,7 +281,7 @@ export default function AdminPage() {
     setContentSaving(key);
     const res = await fetch(`/api/content?key=${key}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) },
       body: JSON.stringify({ html }),
     });
     if (res.ok) {
@@ -289,10 +291,32 @@ export default function AdminPage() {
     setContentSaving(null);
   };
 
+  const loadAll = useCallback((pwd: string) => {
+    loadBuildings(pwd); loadUsers(pwd); loadContent(); loadCategories(pwd); loadAchievements(pwd); loadEasterEggs(pwd);
+  }, [loadBuildings, loadUsers, loadContent, loadCategories, loadAchievements, loadEasterEggs]);
+
+  const verifyPassword = useCallback(async (pwd: string): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwd }),
+      });
+      if (res.ok) return null;
+      return (await res.json().catch(() => ({}))).error || `Błąd logowania (${res.status})`;
+    } catch {
+      return 'Błąd sieci — spróbuj ponownie';
+    }
+  }, []);
+
   useEffect(() => {
     const stored = sessionStorage.getItem('admin_pass');
-    if (stored) { setPassword(stored); setAuthed(true); loadBuildings(stored); loadUsers(stored); loadContent(); loadCategories(stored); loadAchievements(stored); loadEasterEggs(stored); }
-  }, [loadBuildings, loadUsers, loadContent, loadCategories, loadAchievements, loadEasterEggs]);
+    if (!stored) return;
+    verifyPassword(stored).then((err) => {
+      if (err) { sessionStorage.removeItem('admin_pass'); return; }
+      setPassword(stored); setAuthed(true); loadAll(stored);
+    });
+  }, [verifyPassword, loadAll]);
 
   const analyticsFetchedRef = useRef(false);
   useEffect(() => {
@@ -302,16 +326,15 @@ export default function AdminPage() {
     }
   }, [activeTab, authed, fetchAnalytics]);
 
-  const handleAuth = (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(''); setAuthLoading(true);
+    const err = await verifyPassword(password);
+    setAuthLoading(false);
+    if (err) { setAuthError(err); return; }
     sessionStorage.setItem('admin_pass', password);
     setAuthed(true);
-    loadBuildings(password);
-    loadUsers(password);
-    loadContent();
-    loadCategories(password);
-    loadAchievements(password);
-    loadEasterEggs(password);
+    loadAll(password);
   };
 
   const handleMapClick = (lat: number, lng: number) => {
@@ -326,7 +349,7 @@ export default function AdminPage() {
     const body = { ...form, lat: parseFloat(form.lat), lng: parseFloat(form.lng), outlineImageUrl: form.outlineImageUrl || null, gallery: gallery.filter((g) => g.url.trim()) };
     const url    = editingId ? `/api/budynki/${editingId}` : '/api/budynki';
     const method = editingId ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) }, body: JSON.stringify(body) });
     if (res.ok) {
       setSuccess(editingId ? 'Budynek zaktualizowany!' : 'Budynek dodany!');
       cancelForm(); setTimeout(() => setSuccess(''), 3000);
@@ -359,7 +382,7 @@ export default function AdminPage() {
       // Save updated gallery back to DB
       await fetch(`/api/budynki/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+        headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) },
         body: JSON.stringify({ gallery: updatedImages }),
       });
       // Update local state
@@ -401,13 +424,13 @@ export default function AdminPage() {
 
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Usunąć "${name}"?`)) return;
-    const res = await fetch(`/api/budynki/${id}`, { method: 'DELETE', headers: { 'x-admin-password': password } });
+    const res = await fetch(`/api/budynki/${id}`, { method: 'DELETE', headers: { 'x-admin-password': encodeURIComponent(password) } });
     if (res.ok) { setBuildings((b) => b.filter((x) => x.id !== id)); flash('Usunięto!'); }
   };
 
   const handleDeleteUser = async (userId: string, email: string | null) => {
     if (!confirm(`Usunąć "${email ?? userId}" i wszystkie jego odkrycia?`)) return;
-    const res = await fetch('/api/admin/users', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify({ userId }) });
+    const res = await fetch('/api/admin/users', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) }, body: JSON.stringify({ userId }) });
     if (res.ok) { setUsers((u) => u.filter((x) => x.userId !== userId)); flash('Użytkownik usunięty'); }
   };
 
@@ -435,7 +458,7 @@ export default function AdminPage() {
     e.preventDefault(); setFormError('');
     const url    = editingCatId ? `/api/admin/categories/${editingCatId}` : '/api/admin/categories';
     const method = editingCatId ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(catForm) });
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) }, body: JSON.stringify(catForm) });
     if (res.ok) { flash(editingCatId ? 'Kategoria zaktualizowana!' : 'Kategoria dodana!'); cancelCatForm(); loadCategories(password); }
     else { const err = await res.json(); setFormError(err.error || 'Błąd zapisu'); }
   };
@@ -447,7 +470,7 @@ export default function AdminPage() {
 
   const handleCatDelete = async (id: number, label: string) => {
     if (!confirm(`Usunąć kategorię "${label}"?`)) return;
-    const res = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE', headers: { 'x-admin-password': password } });
+    const res = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE', headers: { 'x-admin-password': encodeURIComponent(password) } });
     if (res.ok) { setCategories((prev) => prev.filter((c) => c.id !== id)); flash('Kategoria usunięta'); }
   };
 
@@ -464,7 +487,7 @@ export default function AdminPage() {
     };
     const url    = editingAchId ? `/api/admin/achievements/${editingAchId}` : '/api/admin/achievements';
     const method = editingAchId ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) }, body: JSON.stringify(body) });
     if (res.ok) { flash(editingAchId ? 'Osiągnięcie zaktualizowane!' : 'Osiągnięcie dodane!'); cancelAchForm(); loadAchievements(password); }
     else { const err = await res.json(); setFormError(err.error || 'Błąd zapisu'); }
   };
@@ -476,7 +499,7 @@ export default function AdminPage() {
 
   const handleAchDelete = async (id: number, name: string) => {
     if (!confirm(`Usunąć osiągnięcie "${name}"?`)) return;
-    const res = await fetch(`/api/admin/achievements/${id}`, { method: 'DELETE', headers: { 'x-admin-password': password } });
+    const res = await fetch(`/api/admin/achievements/${id}`, { method: 'DELETE', headers: { 'x-admin-password': encodeURIComponent(password) } });
     if (res.ok) { setAchievements((prev) => prev.filter((a) => a.id !== id)); flash('Osiągnięcie usunięte'); }
   };
 
@@ -494,7 +517,7 @@ export default function AdminPage() {
     };
     const url    = editingEggId ? `/api/admin/easter-eggs/${editingEggId}` : '/api/admin/easter-eggs';
     const method = editingEggId ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': password }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) }, body: JSON.stringify(body) });
     if (res.ok) { flash(editingEggId ? 'Easter egg zaktualizowany!' : 'Easter egg dodany!'); cancelEggForm(); loadEasterEggs(password); }
     else { const err = await res.json(); setFormError(err.error || 'Błąd zapisu'); }
   };
@@ -506,7 +529,7 @@ export default function AdminPage() {
 
   const handleEggDelete = async (id: number, name: string) => {
     if (!confirm(`Usunąć easter egg "${name}"?`)) return;
-    const res = await fetch(`/api/admin/easter-eggs/${id}`, { method: 'DELETE', headers: { 'x-admin-password': password } });
+    const res = await fetch(`/api/admin/easter-eggs/${id}`, { method: 'DELETE', headers: { 'x-admin-password': encodeURIComponent(password) } });
     if (res.ok) { setEasterEggs((prev) => prev.filter((e) => e.id !== id)); flash('Easter egg usunięty'); }
   };
 
@@ -553,8 +576,9 @@ export default function AdminPage() {
             <p className="text-gray-400 text-sm mt-1">Karwia – Gra Terenowa</p>
           </div>
           <form onSubmit={handleAuth} className="space-y-4">
-            <input type="password" placeholder="Hasło administratora" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400" />
-            <button type="submit" className="w-full bg-ocean-500 text-white py-3 rounded-2xl font-bold hover:bg-ocean-600 transition">Zaloguj</button>
+            <input type="password" autoComplete="current-password" placeholder="Hasło administratora" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ocean-400" />
+            {authError && <p className="text-red-600 text-sm text-center">{authError}</p>}
+            <button type="submit" disabled={authLoading || !password} className="w-full bg-ocean-500 text-white py-3 rounded-2xl font-bold hover:bg-ocean-600 transition disabled:opacity-50">{authLoading ? 'Sprawdzanie…' : 'Zaloguj'}</button>
           </form>
         </div>
       </div>
@@ -644,7 +668,7 @@ export default function AdminPage() {
               <Plus size={15} /> Dodaj easter egg
             </button>
           )}
-          <button onClick={() => { sessionStorage.removeItem('admin_pass'); setAuthed(false); }}
+          <button onClick={() => { sessionStorage.removeItem('admin_pass'); setPassword(''); setAuthed(false); }}
             className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title="Wyloguj">
             <LogOut size={18} />
           </button>
@@ -684,7 +708,7 @@ export default function AdminPage() {
 
           {/* ── Mobile map ── */}
           <div className="md:hidden mx-4 mt-3 rounded-2xl overflow-hidden shadow-sm">
-            <MapComponent buildings={mapBuildings} center={[54.7505, 17.8670]} zoom={13} height="180px" onMapClick={handleMapClick} />
+            <MapComponent buildings={mapBuildings} center={[54.8287, 18.2101]} zoom={13} height="180px" onMapClick={handleMapClick} />
           </div>
 
           {/* ── CSV import panel ── */}
@@ -1510,7 +1534,7 @@ export default function AdminPage() {
           )}
           <MapComponent
             buildings={mapBuildings}
-            center={[54.7505, 17.8670]}
+            center={[54.8287, 18.2101]}
             zoom={14}
             height="100%"
             onMapClick={handleMapClick}

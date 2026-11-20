@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { haversineKm } from '@/lib/haversine';
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const building = await prisma.building.findUnique({ where: { id: Number(params.id) } });
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const id = Number((await params).id);
+  const building = await prisma.building.findUnique({ where: { id } });
   if (!building) return NextResponse.json({ error: 'Nie znaleziono' }, { status: 404 });
 
   const all = await prisma.building.findMany({

@@ -18,7 +18,7 @@ Promowanie turystyki w Karwi poprzez gamifikację — każde zeskanowanie kodu Q
 
 | Warstwa | Technologia |
 |---------|------------|
-| Framework | Next.js 14.2 (App Router), React 18, TypeScript 5 |
+| Framework | Next.js 16.2 (App Router), React 19, TypeScript 5 |
 | Baza danych | SQLite (better-sqlite3) + Prisma 7 |
 | Auth | JWT (jose, 90 dni) + bcrypt + weryfikacja email (nodemailer) |
 | Style | Tailwind CSS 3.4 z custom kolorami ocean/sand |

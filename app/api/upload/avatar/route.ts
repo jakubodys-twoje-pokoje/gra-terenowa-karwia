@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import sharp from 'sharp';
+import { getSession } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Zaloguj się, aby dodać zdjęcie' }, { status: 401 });
+  const userId = session.userId;
+
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
-  const userId = formData.get('userId') as string | null;
 
-  if (!file || !userId) return NextResponse.json({ error: 'Brak danych' }, { status: 400 });
+  if (!file) return NextResponse.json({ error: 'Brak danych' }, { status: 400 });
   if (!file.type.startsWith('image/')) return NextResponse.json({ error: 'Tylko obrazy są dozwolone' }, { status: 400 });
   if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: 'Maksymalny rozmiar to 5 MB' }, { status: 400 });
 

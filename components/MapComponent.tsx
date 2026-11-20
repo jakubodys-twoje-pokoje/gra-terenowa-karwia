@@ -21,6 +21,11 @@ export interface MapPlayer {
   lastLng: number;
 }
 
+// Marker HTML is built from strings, so every interpolated value must be escaped.
+function esc(v: string): string {
+  return v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+
 export interface MapHandle {
   panTo: (lat: number, lng: number, zoom?: number) => void;
   openBuilding: (id: number) => void;
@@ -66,7 +71,7 @@ function photoCircle(src: string, sz: number, ring: string, ringW: number, grays
       box-sizing:border-box;background:#ccc;
       ${grayscale ? 'filter:grayscale(1) brightness(0.9);' : ''}
     ">
-      <img src="${src}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+      <img src="${esc(src)}" style="width:100%;height:100%;object-fit:cover;display:block;" />
     </div>`;
 }
 
@@ -193,7 +198,7 @@ export default function MapComponent({
 
       for (const p of players) {
         seen.add(p.userId);
-        const initials = (p.nickname ?? '?').slice(0, 2).toUpperCase();
+        const initials = esc((p.nickname ?? '?').slice(0, 2).toUpperCase());
         const avatar = p.avatarUrl && !p.avatarUrl.startsWith('blob:') ? p.avatarUrl : null;
         const html = `<div style="
           width:32px;height:32px;border-radius:6px;overflow:hidden;
@@ -202,7 +207,7 @@ export default function MapComponent({
           display:flex;align-items:center;justify-content:center;
           font-size:12px;font-weight:700;color:#15803d;
         ">${avatar
-          ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;display:block;" />`
+          ? `<img src="${esc(avatar)}" style="width:100%;height:100%;object-fit:cover;display:block;" />`
           : initials
         }</div>`;
         const icon = L.divIcon({ html, className: '', iconSize: [32, 32], iconAnchor: [16, 16] });
@@ -226,8 +231,11 @@ export default function MapComponent({
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    let cancelled = false;
 
     import('leaflet').then((L) => {
+      // The effect may have been torn down (or re-run) while the Leaflet chunk was loading
+      if (cancelled || mapRef.current) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -250,11 +258,11 @@ export default function MapComponent({
       const map = L.map(containerRef.current, mapOptions).setView(center, zoom);
       mapRef.current = map;
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+      // Keyless OpenStreetMap tiles by default; set NEXT_PUBLIC_MAP_TILE_URL at build time to use another provider
+      L.tileLayer(process.env.NEXT_PUBLIC_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: process.env.NEXT_PUBLIC_MAP_ATTRIBUTION || '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxNativeZoom: 19,
         maxZoom: 21,
-        subdomains: 'abcd',
       }).addTo(map);
 
       if (onMapClick) {
@@ -282,7 +290,7 @@ export default function MapComponent({
             });
           } else {
             marker.bindPopup(
-              `<strong style="font-family:Kanit,sans-serif">${b.name}</strong>` +
+              `<strong style="font-family:Kanit,sans-serif">${esc(b.name)}</strong>` +
               (b.discovered ? '<br/><span style="color:#0F5F92;font-size:12px">✓ Odkryty</span>' : ''),
             );
           }
@@ -317,7 +325,7 @@ export default function MapComponent({
       const buildUserIcon = (avatarUrl?: string | null) => {
         const inner = avatarUrl
           ? `<div style="width:28px;height:28px;border-radius:50%;overflow:hidden;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);background:#ddd">
-               <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+               <img src="${esc(avatarUrl)}" style="width:100%;height:100%;object-fit:cover;display:block;" />
              </div>`
           : `<div style="width:28px;height:28px;border-radius:50%;background:#4A90E2;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -377,6 +385,10 @@ export default function MapComponent({
     });
 
     return () => {
+      cancelled = true;
+      addMarkersRef.current = null;
+      markersRef.current = [];
+      playerMarkersRef.current.clear();
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
