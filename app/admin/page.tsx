@@ -194,7 +194,7 @@ export default function AdminPage() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const text = (ev.target?.result as string) ?? '';
+      const text = ((ev.target?.result as string) ?? '').replace(/^\uFEFF/, '');
       const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((l) => l.trim());
       if (lines.length < 2) return;
       const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
@@ -232,7 +232,7 @@ export default function AdminPage() {
       if (csvRows[i].status === 'ok') continue;
       setCsvRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'importing' } : r));
       const row = csvRows[i];
-      const body = { name: row.name, description: row.description, address: row.address, lat: parseFloat(row.lat), lng: parseFloat(row.lng), imageUrl: row.imageUrl || null, outlineImageUrl: row.outlineImageUrl || null, qrUrl: row.qrUrl, category: row.category, hidden: row.hidden, published: row.published, gallery: row.gallery };
+      const body = { name: row.name, description: row.description, address: row.address, lat: parseFloat(row.lat), lng: parseFloat(row.lng), imageUrl: row.imageUrl || null, outlineImageUrl: row.outlineImageUrl || null, qrUrl: row.qrUrl, category: row.category, hidden: row.hidden, published: row.published, gallery: row.gallery.map((url) => ({ url })) };
       const res = await fetch('/api/budynki', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) }, body: JSON.stringify(body) });
       const msg = res.ok ? 'ok' : ((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
       setCsvRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: msg } : r));
