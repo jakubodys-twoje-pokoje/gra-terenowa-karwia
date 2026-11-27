@@ -130,6 +130,20 @@ export default function AdminPage() {
   const [eggForm, setEggForm]               = useState(EMPTY_EGG_FORM);
   const [showEggForm, setShowEggForm]       = useState(false);
 
+  // ── Easter Egg CSV import ────────────────────────────────────────────────────
+  interface EggCsvRow {
+    name: string; title: string; description: string;
+    mediaType: string; mediaUrl: string;
+    triggerType: string; triggerValue: number | null; triggerBuildingId: number | null;
+    buildingNumber: string; active: boolean;
+    blocked: boolean;      // validation error or already in DB: never sent
+    warnings: string[];
+    status: CsvStatus | 'exists';
+  }
+  const [eggCsvRows, setEggCsvRows]           = useState<EggCsvRow[]>([]);
+  const [eggCsvImporting, setEggCsvImporting] = useState(false);
+  const eggCsvInputRef = useRef<HTMLInputElement>(null);
+
   // ── Analytics state ──────────────────────────────────────────────────────────
   interface AnalyticsData {
     totals: { discoveries: number; users: number; pageViews: number; scansToday: number; viewsToday: number; activeUsers7: number };
@@ -533,6 +547,131 @@ export default function AdminPage() {
     if (res.ok) { setEasterEggs((prev) => prev.filter((e) => e.id !== id)); flash('Easter egg usunięty'); }
   };
 
+  const MEDIA_BY_EXT: Record<string, string> = {
+    jpg: 'image', jpeg: 'image', png: 'image', webp: 'image', gif: 'image',
+    mp4: 'video', webm: 'video', mov: 'video',
+    mp3: 'audio', m4a: 'audio', ogg: 'audio', wav: 'audio',
+  };
+
+  const handleEggCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ((ev.target?.result as string) ?? '').replace(/^﻿/, '');
+      const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((l) => l.trim());
+      if (lines.length < 2) return;
+      const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
+      const get = (row: string[], col: string) => {
+        const i = headers.indexOf(col);
+        return i === -1 ? '' : (row[i]?.trim() ?? '');
+      };
+
+      const existingNames = new Set(easterEggs.map((egg) => egg.name.trim()));
+
+      const rows: EggCsvRow[] = lines.slice(1).map((line) => {
+        const cols = parseCsvLine(line);
+        const name = get(cols, 'name');
+        const triggerType = get(cols, 'triggertype');
+        const rawValue = get(cols, 'triggervalue');
+        const buildingNumber = get(cols, 'buildingnumber');
+        const mediaUrl = get(cols, 'mediaurl');
+        let mediaType = get(cols, 'mediatype').toLowerCase();
+        const activeRaw = get(cols, 'active').toLowerCase();
+
+        const row: EggCsvRow = {
+          name, title: get(cols, 'title'), description: get(cols, 'description'),
+          mediaType, mediaUrl, triggerType, triggerValue: null, triggerBuildingId: null,
+          buildingNumber, active: activeRaw === '' || activeRaw === 'true' || activeRaw === '1',
+          blocked: false, warnings: [], status: 'pending',
+        };
+        const fail = (msg: string) => { row.status = msg; row.blocked = true; return row; };
+
+        if (!name || !row.title || !triggerType) return fail('wymagane: name, title, triggerType');
+
+        if (triggerType === 'discovery_count' || triggerType === 'every_n') {
+          if (!/^\d+$/.test(rawValue) || Number(rawValue) < 1) return fail('triggerValue musi być liczbą ≥ 1');
+          row.triggerValue = Number(rawValue);
+        } else if (triggerType === 'building') {
+          const building = /^\d+$/.test(buildingNumber)
+            ? buildings.find((b) => b.number === Number(buildingNumber))
+            : undefined;
+          if (!building) return fail(`brak budynku nr ${buildingNumber || '?'}`);
+          row.triggerBuildingId = building.id;
+        } else {
+          return fail(`nieznany triggerType: ${triggerType}`);
+        }
+
+        if (!mediaType) {
+          if (!mediaUrl) {
+            mediaType = 'none';
+          } else {
+            const ext = mediaUrl.split(/[?#]/)[0].split('.').pop()?.toLowerCase() ?? '';
+            mediaType = MEDIA_BY_EXT[ext] ?? '';
+            if (!mediaType) return fail('nie rozpoznano typu mediów — podaj mediaType');
+          }
+        } else if (!['none', 'image', 'video', 'audio'].includes(mediaType)) {
+          return fail(`nieznany mediaType: ${mediaType}`);
+        }
+        row.mediaType = mediaType;
+
+        if (existingNames.has(name)) { row.status = 'exists'; row.blocked = true; }
+        return row;
+      }).filter((r) => r.name || r.title || r.triggerType);
+
+      // Warnings: compare each importable row with other importable rows and with eggs already in the DB.
+      type Trigger = { triggerType: string; triggerValue: number | null; triggerBuildingId: number | null; active: boolean };
+      const sameCount = (a: Trigger, b: Trigger) => {
+        if (!a.active || !b.active) return false;
+        const dcVsEveryN = (dc: Trigger, n: Trigger) =>
+          dc.triggerType === 'discovery_count' && n.triggerType === 'every_n' &&
+          !!dc.triggerValue && !!n.triggerValue && dc.triggerValue % n.triggerValue === 0;
+        if (a.triggerType === 'discovery_count' && b.triggerType === 'discovery_count') return a.triggerValue === b.triggerValue;
+        return dcVsEveryN(a, b) || dcVsEveryN(b, a);
+      };
+      const sameBuilding = (a: Trigger, b: Trigger) =>
+        a.triggerType === 'building' && b.triggerType === 'building' && a.triggerBuildingId === b.triggerBuildingId;
+
+      const others: (Trigger & { label: string; rowIndex?: number })[] = [
+        ...easterEggs.map((egg) => ({ ...egg, label: `„${egg.name}” (w bazie)` })),
+        ...rows.map((r, i) => ({ ...r, label: `„${r.name}” (wiersz ${i + 1})`, rowIndex: i })).filter((r) => !r.blocked),
+      ];
+      rows.forEach((row, i) => {
+        if (row.blocked) return;
+        for (const other of others) {
+          if (other.rowIndex === i) continue;
+          if (sameCount(row, other)) row.warnings.push(`odpali się przy tej samej liczbie odkryć co ${other.label} — pokaże się tylko jeden`);
+          if (sameBuilding(row, other)) row.warnings.push(`ten sam budynek co ${other.label}`);
+        }
+      });
+
+      setEggCsvRows(rows);
+      e.target.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const runEggCsvImport = async () => {
+    setEggCsvImporting(true);
+    for (let i = 0; i < eggCsvRows.length; i++) {
+      const row = eggCsvRows[i];
+      if (row.blocked || row.status === 'ok') continue;
+      setEggCsvRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'importing' } : r));
+      const body = {
+        name: row.name, title: row.title, description: row.description,
+        mediaType: row.mediaType, mediaUrl: row.mediaUrl,
+        triggerType: row.triggerType, triggerValue: row.triggerValue, triggerBuildingId: row.triggerBuildingId,
+        active: row.active,
+      };
+      const res = await fetch('/api/admin/easter-eggs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': encodeURIComponent(password) }, body: JSON.stringify(body) })
+        .catch(() => null);
+      const msg = res?.ok ? 'ok' : ((await res?.json().catch(() => ({})))?.error || (res ? `HTTP ${res.status}` : 'błąd sieci'));
+      setEggCsvRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: msg } : r));
+    }
+    setEggCsvImporting(false);
+    loadEasterEggs(password);
+  };
+
   const cancelForm = () => {
     setForm(EMPTY_FORM); setGallery([]); setEditingId(null); setShowForm(false); setFormError('');
     setShowDms(false); setDmsLat({ d: '', m: '', s: '' }); setDmsLng({ d: '', m: '', s: '' });
@@ -662,12 +801,17 @@ export default function AdminPage() {
               <Plus size={15} /> Dodaj osiągnięcie
             </button>
           </>)}
-          {activeTab === 'easter-eggi' && (
+          {activeTab === 'easter-eggi' && (<>
+            <input ref={eggCsvInputRef} type="file" accept=".csv" className="hidden" onChange={handleEggCsvFile} />
+            <button onClick={() => eggCsvInputRef.current?.click()}
+              className="flex items-center gap-2 border border-ocean-300 text-ocean-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-ocean-50 transition">
+              <Upload size={14} /> Import CSV
+            </button>
             <button onClick={() => { cancelEggForm(); setShowEggForm(true); }}
               className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-ocean-600 transition">
               <Plus size={15} /> Dodaj easter egg
             </button>
-          )}
+          </>)}
           <button onClick={() => { sessionStorage.removeItem('admin_pass'); setPassword(''); setAuthed(false); }}
             className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title="Wyloguj">
             <LogOut size={18} />
@@ -1249,6 +1393,82 @@ export default function AdminPage() {
           {/* ── EASTER EGGI ── */}
           {activeTab === 'easter-eggi' && (
             <div className="px-4 py-4">
+              {eggCsvRows.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-bold text-ocean-900 text-sm flex items-center gap-2">
+                      <Upload size={14} className="text-ocean-400" />
+                      Import easter eggów
+                      <span className="text-xs font-normal text-gray-400">({eggCsvRows.length} wierszy)</span>
+                    </h2>
+                    <button onClick={() => setEggCsvRows([])} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+                  </div>
+
+                  <p className="text-xs text-gray-400 mb-2">
+                    Kolumny: <code className="bg-gray-100 px-1 rounded">name, title, description, mediaType, mediaUrl, triggerType, triggerValue, buildingNumber, active</code><br />
+                    Wymagane: <code className="bg-gray-100 px-1 rounded">name, title, triggerType</code> · <code className="bg-gray-100 px-1 rounded">buildingNumber</code> = numer z tabliczki
+                  </p>
+
+                  <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-100">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="text-left px-2 py-1.5 text-gray-400 font-semibold w-6">#</th>
+                          <th className="text-left px-2 py-1.5 text-gray-400 font-semibold">Nazwa</th>
+                          <th className="text-left px-2 py-1.5 text-gray-400 font-semibold">Wyzwalacz</th>
+                          <th className="text-left px-2 py-1.5 text-gray-400 font-semibold w-24">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {eggCsvRows.map((row, i) => (
+                          <tr key={i} className="border-t border-gray-50 align-top">
+                            <td className="px-2 py-1 text-gray-300">{i + 1}</td>
+                            <td className="px-2 py-1 max-w-[160px]">
+                              <div className="truncate">{row.name || <span className="text-red-400 italic">brak</span>}{!row.active && <span className="text-gray-400"> · nieaktywny</span>}</div>
+                              {row.warnings.map((w, wi) => (
+                                <div key={wi} className="text-amber-600 flex items-start gap-1 mt-0.5"><AlertCircle size={11} className="shrink-0 mt-px" /> {w}</div>
+                              ))}
+                            </td>
+                            <td className="px-2 py-1 text-gray-400 whitespace-nowrap">
+                              {row.triggerType === 'discovery_count' && `po ${row.triggerValue ?? '?'} odkryciach`}
+                              {row.triggerType === 'every_n'         && `co ${row.triggerValue ?? '?'}. odkrycie`}
+                              {row.triggerType === 'building'        && `budynek nr ${row.buildingNumber || '?'}`}
+                              {!['discovery_count', 'every_n', 'building'].includes(row.triggerType) && (row.triggerType || '–')}
+                            </td>
+                            <td className="px-2 py-1">
+                              {row.status === 'pending'   && <span className="text-gray-300">–</span>}
+                              {row.status === 'importing' && <span className="text-ocean-400 animate-pulse">…</span>}
+                              {row.status === 'ok'        && <span className="text-green-500 flex items-center gap-1"><Check size={11} /> OK</span>}
+                              {row.status === 'exists'    && <span className="text-gray-400">już istnieje</span>}
+                              {!['pending', 'importing', 'ok', 'exists'].includes(row.status) && (
+                                <span className="text-red-400 flex items-center gap-1" title={row.status}><AlertCircle size={11} className="shrink-0" /> {row.status}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={runEggCsvImport}
+                      disabled={eggCsvImporting || eggCsvRows.every((r) => r.blocked || r.status === 'ok')}
+                      className="flex items-center gap-2 bg-ocean-500 text-white px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-ocean-600 transition"
+                    >
+                      {eggCsvImporting
+                        ? <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Importuję…</>
+                        : <><Upload size={13} />Importuj {eggCsvRows.filter((r) => !r.blocked && r.status !== 'ok').length} wierszy</>}
+                    </button>
+                    {!eggCsvImporting && eggCsvRows.some((r) => r.status === 'ok') && (
+                      <span className="text-green-600 text-xs flex items-center gap-1">
+                        <Check size={12} /> {eggCsvRows.filter((r) => r.status === 'ok').length} zaimportowano
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {showEggForm && (
                 <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
                   <h3 className="font-bold text-ocean-900 text-sm mb-3">{editingEggId ? 'Edytuj easter egg' : 'Nowy easter egg'}</h3>
